@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="id">
 <head>
 <meta charset="UTF-8">
@@ -59,27 +59,70 @@ if (window.tailwind) {
   }
   @media (max-width: 1023px) and (orientation: portrait) {
     /* sheet menempel penuh di dasar layar (menutupi bottom-nav saat terbuka),
-       tinggi dibatasi agar katalog tetap terlihat & bisa diklik di atasnya */
+       tinggi cukup untuk 3 baris item + footer ringkas, katalog tetap di atas */
     #cartPanel {
       left: 0; right: 0; bottom: 0;
       border-radius: 1rem 1rem 0 0;
       border-left: 0; border-right: 0; border-bottom: 0;
-      max-height: 58vh;
-      max-height: 58dvh;
+      max-height: 66vh;
+      max-height: 66dvh;
       z-index: 50;
     }
     #cartPanel .cart-footer { padding-bottom: calc(0.625rem + env(safe-area-inset-bottom)); }
     #cartItems:not(:empty) { min-height: 6rem; }
   }
 
-  /* HP/tablet landscape: keranjang di kanan, produk di kiri (di bawah breakpoint lg) */
+  /* HP/tablet landscape: rapikan seluruh ukuran tampilan */
   @media (orientation: landscape) and (max-width: 1023px) {
-    #v-kasir .kasir-grid { grid-template-columns: minmax(0, 1fr) clamp(250px, 34vw, 340px); }
+    /* topbar & area konten lebih ramping */
+    header.fixed { height: 3rem; }
+    #pageSub { display: none; }
+    main.pt-16 { padding-top: 3.5rem; padding-bottom: 4rem; }
+
+    /* bottom-nav lebih pendek */
+    #bottomNav .nav-btn { padding-top: .375rem; padding-bottom: .375rem; }
+    #bottomNav .nav-btn > span { font-size: .875rem; line-height: 1.125rem; }
+
+    /* kartu pencarian & chip kategori ringkas */
+    #v-kasir .kartu-cari { padding: .5rem; }
+    #inpCari { padding-top: .5rem; padding-bottom: .5rem; }
+    #chipKategori { margin-top: .375rem; }
+    #chipKategori .chip { padding-top: .25rem; padding-bottom: .25rem; font-size: .6875rem; }
+
+    /* katalog & kartu produk lebih rapat */
+    #gridProduk { gap: .375rem; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); }
+    #v-kasir .produk-card { padding: .5rem; }
+    #v-kasir .produk-card > div:first-child { height: 2rem; width: 2rem; margin-bottom: .375rem; font-size: .875rem; }
+
+    /* keranjang di kanan: header & footer menempel, isi digulir, selalu muat */
+    #v-kasir .kasir-grid { grid-template-columns: minmax(0, 1fr) clamp(300px, 40vw, 360px); gap: .75rem; }
     #cartPanel, #cartPanel.cart-terbuka {
-      position: sticky; top: 4.5rem; left: auto; right: auto; bottom: auto;
-      transform: none; max-height: calc(100vh - 9.5rem);
+      position: sticky; top: 3.5rem; left: auto; right: auto; bottom: auto;
+      transform: none; max-height: calc(100vh - 7rem);
     }
+    #cartPanel .cart-head { position: sticky; top: 0; z-index: 5; }
+    #cartPanel .cart-footer { position: sticky; bottom: 0; z-index: 5; }
     #btnToggleCart, #btnTutupCart { display: none; }
+
+    /* daftar item jadi satu baris hemat tempat */
+    #cartPanel .cart-scroll { padding: .5rem; }
+    #cartItems:not(:empty) { min-height: 4rem; }
+    #cartPanel .item-row { flex-direction: row; align-items: center; gap: .5rem; padding: .375rem .5rem; }
+    #cartPanel .item-nama { flex: 1 1 auto; min-width: 0; align-items: center; }
+    #cartPanel .item-nama > div:first-child { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #cartPanel .item-ctrl { flex: 0 0 auto; margin-top: 0; gap: .5rem; }
+
+    /* footer: TOTAL & KEMBALIAN sebaris, metode & input bayar sebaris */
+    #cartPanel .cart-footer { padding-bottom: .625rem; }
+    #cartPanel .ringkas { padding: .25rem .5rem; }
+    #cartPanel .totals { flex-direction: row; justify-content: space-between; align-items: center; gap: .5rem; }
+    #cartPanel .bayar-strip { flex-direction: row; flex-wrap: wrap; align-items: center; gap: .375rem .5rem; }
+    #metodeWrap { width: 7.5rem; flex: 0 0 auto; }
+    #bayarWrap { flex: 1 1 11rem; min-width: 0; }
+    #quickBayar { display: none; }
+    #cartPanel .cart-actions label { font-size: .625rem; }
+    #btnBayar { font-size: .75rem; min-width: 7.5rem; }
+    #rowSub { display: none; }
   }
 
   .metode-btn.aktif { background: #4f46e5; color: #fff; border-color: #4f46e5; }
@@ -194,7 +237,7 @@ if (window.tailwind) {
         <div class="space-y-3">
           <div id="alertStok" class="hidden"></div>
 
-          <div class="bg-white rounded-2xl border border-slate-200 p-3 shadow-sm">
+          <div class="bg-white rounded-2xl border border-slate-200 p-3 shadow-sm kartu-cari">
             <div class="relative">
               <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">🔍</span>
               <input id="inpCari" class="w-full border border-slate-200 rounded-xl pl-9 pr-3 sm:pr-24 py-3 text-sm" placeholder="Cari nama produk / kategori...">
@@ -213,7 +256,7 @@ if (window.tailwind) {
 
         <!-- Keranjang -->
         <aside id="cartPanel" class="bg-white rounded-2xl border border-slate-200 shadow-lg overflow-y-auto lg:sticky lg:top-[4.5rem] z-40 fixed inset-x-2 bottom-20 max-h-[calc(100vh_-_9rem)] lg:max-h-[calc(100vh_-_6.5rem)] flex flex-col">
-          <div class="px-2.5 py-2 border-b border-slate-100 bg-brand-50 flex items-center justify-between gap-2 shrink-0">
+          <div class="px-2.5 py-2 border-b border-slate-100 bg-brand-50 flex items-center justify-between gap-2 shrink-0 cart-head">
             <div class="text-xs font-extrabold text-brand-800 whitespace-nowrap">🧺 Keranjang · <span id="cartCount">0</span> item</div>
             <div class="flex gap-1.5 shrink-0">
               <button id="btnKosongkan" class="text-[11px] font-semibold text-rose-600 bg-rose-50 border border-rose-200 px-2 py-1 rounded-lg">Kosongkan</button>
@@ -221,45 +264,47 @@ if (window.tailwind) {
             </div>
           </div>
 
-          <div id="cartItems" class="p-2.5 lg:p-3 space-y-1.5 lg:space-y-2 overflow-y-auto grow"></div>
-          <div id="cartKosong" class="p-6 lg:p-8 text-center text-slate-400 text-sm">
-            <div class="text-3xl mb-2">🛒</div>Keranjang kosong.<br>Klik produk untuk menambah.
+          <div class="grow min-h-0 overflow-y-auto p-2 space-y-1.5 lg:p-3 lg:space-y-2 cart-scroll">
+            <div id="cartItems"></div>
+            <div id="cartKosong" class="p-6 lg:p-8 text-center text-slate-400 text-sm">
+              <div class="text-3xl mb-2">🛒</div>Keranjang kosong.<br>Klik produk untuk menambah.
+            </div>
+            <input id="inpCatatan" class="w-full border border-slate-200 rounded-lg px-2 py-2 text-xs" placeholder="Catatan transaksi (opsional)">
           </div>
 
-          <div class="p-2.5 lg:p-3 border-t border-slate-100 space-y-1.5 lg:space-y-2 text-sm shrink-0 bg-white cart-footer">
-            <input id="inpCatatan" class="w-full border border-slate-200 rounded-lg px-2 py-2 text-xs" placeholder="Catatan transaksi (opsional)">
-
-            <div class="space-y-0.5 text-[11px] bg-slate-50 rounded-xl p-1.5 lg:p-2 border border-slate-100">
-              <div class="flex justify-between gap-2 text-slate-500"><span>Subtotal</span><span class="font-medium text-slate-700 text-right"><span id="lblSubtotal" class="tabular-nums">Rp0</span><span id="wrapPajak"> · Pajak <span id="lblPajak" class="tabular-nums">Rp0 (0%)</span></span></span></div>
-              <div class="flex justify-between text-sm font-extrabold text-slate-900 pt-1 mt-0.5 border-t border-dashed"><span>TOTAL</span><span id="lblTotal" class="tabular-nums">Rp0</span></div>
-            </div>
-
-            <div class="grid grid-cols-2 gap-1.5" id="metodeWrap">
-              <button class="metode-btn aktif border border-slate-200 rounded-lg py-2 text-[11px] font-semibold" data-metode="Tunai">Tunai</button>
-              <button class="metode-btn border border-slate-200 rounded-lg py-2 text-[11px] font-semibold" data-metode="QRIS">QRIS</button>
-            </div>
-
-            <div id="bayarWrap">
-              <div class="flex gap-2">
-                <input id="inpBayar" type="number" min="0" class="grow border border-slate-200 rounded-lg px-3 py-2.5 text-lg font-bold text-right" placeholder="0">
-                <button id="btnUangPas" class="text-xs font-bold bg-slate-800 text-white px-3 rounded-lg">UANG PAS</button>
+          <div class="p-2.5 lg:p-3 border-t border-slate-100 space-y-1 lg:space-y-2 text-sm shrink-0 bg-white cart-footer">
+            <div class="ringkas text-[11px] bg-slate-50 rounded-xl p-1.5 lg:p-2 border border-slate-100">
+              <div class="totals flex flex-col gap-0.5">
+                <div id="rowSub" class="hidden flex justify-between gap-2 text-slate-500 border-b border-dashed border-slate-200 pb-0.5 mb-0.5"><span>Subtotal</span><span class="font-medium text-slate-700 text-right"><span id="lblSubtotal" class="tabular-nums">Rp0</span><span id="wrapPajak"> · Pajak <span id="lblPajak" class="tabular-nums">Rp0 (0%)</span></span></span></div>
+                <div class="total-row flex justify-between gap-2 text-sm font-extrabold text-slate-900"><span>TOTAL</span><span id="lblTotal" class="tabular-nums">Rp0</span></div>
+                <div id="rowKembalian" class="hidden flex items-center justify-between gap-2 text-emerald-600"><span class="text-[10px] font-bold uppercase">Kembalian</span><span id="lblKembalian" class="text-sm font-extrabold text-emerald-700 tabular-nums">Rp0</span></div>
               </div>
-              <div id="quickBayar" class="flex gap-1.5 mt-1.5 overflow-x-auto no-scrollbar"></div>
             </div>
 
-            <div class="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-1.5">
-              <span class="text-[11px] font-semibold text-emerald-700">KEMBALIAN</span>
-              <span id="lblKembalian" class="text-base font-extrabold text-emerald-700 tabular-nums">Rp0</span>
+            <div class="bayar-strip flex flex-col gap-1.5">
+              <div class="grid grid-cols-2 gap-1.5" id="metodeWrap">
+                <button class="metode-btn aktif border border-slate-200 rounded-lg py-2 text-[11px] font-semibold" data-metode="Tunai">Tunai</button>
+                <button class="metode-btn border border-slate-200 rounded-lg py-2 text-[11px] font-semibold" data-metode="QRIS">QRIS</button>
+              </div>
+
+              <div id="bayarWrap">
+                <div class="flex gap-1.5">
+                  <input id="inpBayar" type="number" min="0" class="grow border border-slate-200 rounded-lg px-3 py-2 text-lg leading-6 font-bold text-right" placeholder="0">
+                  <button id="btnUangPas" class="text-xs font-bold bg-slate-800 text-white px-3 rounded-lg">UANG PAS</button>
+                </div>
+                <div id="quickBayar" class="flex gap-1.5 mt-1.5 overflow-x-auto no-scrollbar"></div>
+              </div>
             </div>
 
-            <label class="flex items-center gap-2 text-xs text-slate-600 cursor-pointer select-none">
-              <input id="chkCetakStruk" type="checkbox" class="w-4 h-4 accent-brand-600">
-              <span>Cetak struk setelah bayar</span>
-            </label>
-
-            <button id="btnBayar" class="w-full bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white font-bold rounded-xl py-2.5 lg:py-3 text-sm shadow-lg shadow-brand-600/25 transition">
-              💳 PROSES PEMBAYARAN
-            </button>
+            <div class="cart-actions flex flex-wrap items-center gap-2">
+              <label class="flex items-center gap-1.5 text-[11px] text-slate-600 cursor-pointer select-none grow min-w-0">
+                <input id="chkCetakStruk" type="checkbox" class="w-4 h-4 accent-brand-600 shrink-0">
+                <span class="whitespace-nowrap">Cetak struk setelah bayar</span>
+              </label>
+              <button id="btnBayar" class="grow min-w-[8.5rem] bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white font-bold rounded-xl py-2.5 lg:py-3 text-sm shadow-lg shadow-brand-600/25 transition">
+                💳 PROSES PEMBAYARAN
+              </button>
+            </div>
           </div>
         </aside>
 
@@ -1357,13 +1402,13 @@ function renderKeranjang() {
 
   $('#cartItems').innerHTML = state.cart.map(i => {
     const sub = i.harga * i.qty - (Number(i.disc) || 0);
-    return '<div class="border border-slate-100 rounded-xl p-2 bg-slate-50/50">' +
-      '<div class="flex justify-between gap-2 items-start">' +
+    return '<div class="item-row border border-slate-100 rounded-xl p-2 bg-slate-50/50 flex flex-col">' +
+      '<div class="item-nama flex justify-between gap-2 items-start">' +
         '<div class="text-xs font-semibold leading-tight text-slate-700 min-w-0 grow">' + esc(i.nama) + '</div>' +
         '<button class="text-rose-400 hover:text-rose-600 text-sm leading-none" onclick="hapusItem(\'' + i.id + '\')" title="Hapus">🗑</button>' +
       '</div>' +
-      '<div class="flex items-center justify-between mt-1.5 gap-2">' +
-        '<div class="flex items-center bg-white border border-slate-200 rounded-lg shrink-0">' +
+      '<div class="item-ctrl flex items-center justify-between mt-1.5 gap-2">' +
+        '<div class="item-qty flex items-center bg-white border border-slate-200 rounded-lg shrink-0">' +
           '<button class="w-9 h-9 sm:w-7 sm:h-7 text-slate-600 font-bold hover:bg-slate-100" onclick="ubahQty(\'' + i.id + '\',-1)">−</button>' +
           '<span class="w-7 text-center text-xs font-bold tabular-nums">' + i.qty + '</span>' +
           '<button class="w-9 h-9 sm:w-7 sm:h-7 text-slate-600 font-bold hover:bg-slate-100" onclick="ubahQty(\'' + i.id + '\',1)">+</button>' +
@@ -1380,11 +1425,15 @@ function renderKeranjang() {
   $('#lblPajak').textContent = rp(h.pajak) + ' (' + state.pajakPct + '%)';
   const wp = $('#wrapPajak');
   if (wp) wp.classList.toggle('hidden', Number(state.pajakPct) === 0);
+  const rs = $('#rowSub');
+  if (rs) rs.classList.toggle('hidden', Number(state.pajakPct) === 0);
   $('#lblTotal').textContent = rp(h.total);
   $('#floatCartTotal').textContent = rp(h.total);
   $('#btnToggleCart').classList.toggle('hidden', n === 0);
-  if (state.metode === 'Tunai') $('#lblKembalian').textContent = rp(h.kembalian);
-  else $('#lblKembalian').textContent = rp(0);
+  const k = state.metode === 'Tunai' ? h.kembalian : 0;
+  $('#lblKembalian').textContent = rp(k);
+  const rk = $('#rowKembalian');
+  if (rk) rk.classList.toggle('hidden', k <= 0);
   $('#btnBayar').innerHTML = '💳 BAYAR ' + rp(h.total);
 }
 
