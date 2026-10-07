@@ -162,14 +162,27 @@ if (window.tailwind) {
 
 <body class="bg-slate-100 text-slate-800">
 
-<!-- ============================== BOOT (tanpa login) ============================== -->
-<div id="bootView" class="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-brand-900 via-slate-900 to-slate-800">
-  <div class="w-full max-w-sm text-center">
-    <div class="mx-auto w-16 h-16 rounded-2xl bg-brand-600 grid place-items-center text-3xl shadow-lg shadow-brand-600/40">🧾</div>
-    <h1 class="mt-4 text-2xl font-extrabold text-white">Kasir Online</h1>
-    <p class="text-slate-400 text-sm">Point of Sale • Google Sheets Database</p>
-    <div class="mt-4 text-[11px] text-slate-400">Menyiapkan aplikasi…</div>
-    <div id="bootErr" class="hidden mt-4 text-xs text-rose-100 bg-rose-900/70 border border-rose-700 rounded-lg px-3 py-2 text-left"></div>
+<!-- ============================== LOGIN ============================== -->
+<div id="loginView" class="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-brand-900 via-slate-900 to-slate-800">
+  <div class="w-full max-w-sm">
+    <div class="text-center mb-5">
+      <div class="mx-auto w-16 h-16 rounded-2xl bg-brand-600 grid place-items-center text-3xl shadow-lg shadow-brand-600/40">🧾</div>
+      <h1 class="mt-4 text-2xl font-extrabold text-white">Kasir Online</h1>
+      <p class="text-slate-400 text-sm">Point of Sale • Google Sheets Database</p>
+    </div>
+    <form id="loginForm" autocomplete="on" class="bg-white rounded-2xl shadow-xl p-5 space-y-3">
+      <div>
+        <label for="loginUser" class="block text-xs font-semibold text-slate-600 mb-1">Username</label>
+        <input id="loginUser" name="username" autocomplete="username" class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm" placeholder="username">
+      </div>
+      <div>
+        <label for="loginPass" class="block text-xs font-semibold text-slate-600 mb-1">Password</label>
+        <input id="loginPass" name="password" type="password" autocomplete="current-password" class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm" placeholder="••••••••">
+      </div>
+      <div id="loginErr" class="hidden text-xs text-rose-600 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2"></div>
+      <button id="btnLogin" type="submit" class="w-full bg-brand-600 hover:bg-brand-700 disabled:opacity-60 text-white font-bold rounded-xl py-2.5 text-sm shadow-lg shadow-brand-600/25 transition">Masuk</button>
+      <p class="text-[11px] text-slate-400 text-center leading-relaxed">Gunakan akun yang terdaftar di menu Pengguna.</p>
+    </form>
   </div>
 </div>
 
@@ -223,6 +236,7 @@ if (window.tailwind) {
       <div class="hidden sm:flex items-center gap-2 text-xs font-semibold text-slate-600 bg-slate-100 px-2.5 py-1.5 rounded-full">
         <span id="userTop">—</span>
       </div>
+      <button id="btnKeluar" class="text-[11px] font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 border border-slate-200 px-2.5 py-1.5 rounded-full transition">Keluar</button>
     </div>
   </header>
 
@@ -1167,17 +1181,16 @@ function renderSemua() {
   if ($('#listStokMenipis')) renderStokMenipis();
 }
 
-function tampilkanBoot(pesan) {
-  $('#bootView').classList.remove('hidden');
+function tampilkanLogin(pesan) {
+  $('#loginView').classList.remove('hidden');
   $('#appView').classList.add('hidden');
-  if (pesan) {
-    const e = $('#bootErr');
-    e.textContent = pesan;
-    e.classList.remove('hidden');
-  }
+  const e = $('#loginErr');
+  if (pesan) { e.textContent = pesan; e.classList.remove('hidden'); }
+  else e.classList.add('hidden');
+  if (window.innerWidth >= 1024) $('#loginUser').focus();
 }
 function bukaApp() {
-  $('#bootView').classList.add('hidden');
+  $('#loginView').classList.add('hidden');
   $('#appView').classList.remove('hidden');
   const admin = state.user && state.user.peran === 'Admin';
   $$('.admin-only').forEach(el => el.classList.toggle('hidden', !admin));
@@ -1186,26 +1199,40 @@ function bukaApp() {
   applySet(); renderSemua(); updateStatusKoneksi(); nav('kasir');
 }
 
-/** Tanpa halaman login: setiap pembuka link langsung mendapat sesi Admin.
- *  Bila sheet Pengguna belum ada (buka link untuk pertama kali), database
- *  dibuat otomatis lewat 'setup' lalu sesi Admin diberikan lagi. */
-async function dapatkanSesiAdmin() {
-  const simpan = d => {
+/* ---- Halaman login: username + password → sesi token (24 jam) ---- */
+$('#loginForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const err = $('#loginErr');
+  err.classList.add('hidden');
+  const u = $('#loginUser').value.trim();
+  const p = $('#loginPass').value;
+  if (!u || !p) { err.textContent = 'Username dan password wajib diisi.'; err.classList.remove('hidden'); return; }
+  const btn = $('#btnLogin');
+  btn.disabled = true; btn.textContent = 'Memeriksa…';
+  try {
+    const d = await call('login', { username: u, password: p });
     state.token = d.token; state.user = d.user;
     simpanJSON(LS.sesi, { token: d.token, user: d.user });
-    return d;
-  };
-  try {
-    return simpan(await call('auth.admin'));
-  } catch (e) {
-    try {
-      await call('setup');
-      return simpan(await call('auth.admin'));
-    } catch (e2) {
-      throw new Error('Tidak bisa menyiapkan sesi Admin: ' + e2.message);
-    }
+    $('#loginPass').value = '';
+    await bootstrap();
+    bukaApp();
+    setTimeout(sinkronAntrean, 1200);
+  } catch (e2) {
+    err.textContent = e2.message || 'Login gagal, coba lagi.';
+    err.classList.remove('hidden');
+    $('#loginPass').value = '';
+    $('#loginPass').focus();
+  } finally {
+    btn.disabled = false; btn.textContent = 'Masuk';
   }
-}
+});
+
+$('#btnKeluar').addEventListener('click', () => {
+  localStorage.removeItem(LS.sesi);
+  state.token = null; state.user = null;
+  $('#loginPass').value = '';
+  tampilkanLogin();
+});
 
 /* ================================================================
  * 4. NAVIGASI
@@ -2533,9 +2560,10 @@ function jamTick() {
   renderKeranjang();
   updateStatusKoneksi();
 
-  // Sesi lama hanya dipakai bila sudah Admin; selain itu langsung dapat sesi Admin baru.
+  // Ada sesi tersimpan (Admin/Kasir) → dipakai lagi; bila kedaluwarsa → kembali ke login.
   const sesi = bacaJSON(LS.sesi);
-  if (sesi && sesi.token && sesi.user && sesi.user.peran === 'Admin') {
+  let pesanLogin = '';
+  if (sesi && sesi.token && sesi.user && sesi.user.nama) {
     state.token = sesi.token; state.user = sesi.user;
     try {
       await bootstrap();
@@ -2551,16 +2579,12 @@ function jamTick() {
       }
       localStorage.removeItem(LS.sesi);
       state.token = null; state.user = null;
+      pesanLogin = e.message || 'Sesi berakhir, silakan login ulang.';
     }
   }
-  try {
-    await dapatkanSesiAdmin();
-    await bootstrap();
-    bukaApp();
-    setTimeout(sinkronAntrean, 1200);
-  } catch (e) {
-    tampilkanBoot('Gagal memuat aplikasi: ' + e.message);
-  }
+  // Belum login: siapkan database bila belum ada (buka pertama kali), lalu halaman login.
+  if (!pesanLogin) { try { await call('setup'); } catch (e) { /* database mungkin sudah siap */ } }
+  tampilkanLogin(pesanLogin);
 })();
 </script>
 </body>
