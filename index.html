@@ -22,7 +22,7 @@ if (window.tailwind) {
   }
 }
 </script>
-<script>try{if(localStorage.getItem('kasir_tema_v1')==='gelap')document.documentElement.classList.add('dark');}catch(e){}</script>
+<script>try{var st=localStorage;if(st.getItem('kasir_tema_v1')==='gelap')document.documentElement.classList.add('dark');if(st.getItem('kasir_sidebar_v1')==='1')document.documentElement.classList.add('sidebar-ciut');}catch(e){}</script>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -236,6 +236,25 @@ if (window.tailwind) {
   @media print {
     html.dark *:not(body) { background-color: transparent !important; color: #000 !important; border-color: #cbd5e1 !important; }
   }
+
+  /* ---------- Sidebar bisa diciutkan ---------- */
+  aside#sidebar { transition: width .2s ease; }
+  html.sidebar-ciut aside#sidebar { width: 4rem; }
+  html.sidebar-ciut aside#sidebar .side-head { justify-content: center; padding-left: .375rem; padding-right: .375rem; gap: 0; }
+  html.sidebar-ciut aside#sidebar .side-title,
+  html.sidebar-ciut aside#sidebar nav .nav-btn > span,
+  html.sidebar-ciut aside#sidebar #txtSide,
+  html.sidebar-ciut aside#sidebar #userSide { display: none; }
+  html.sidebar-ciut aside#sidebar nav { padding: .75rem .5rem; }
+  html.sidebar-ciut aside#sidebar nav .nav-btn { justify-content: center; padding-left: 0; padding-right: 0; gap: 0; }
+  html.sidebar-ciut aside#sidebar .side-foot { padding: .75rem .5rem; }
+  html.sidebar-ciut aside#sidebar .side-foot > div:first-child { justify-content: center; padding: 0; }
+  @media (min-width: 1024px) {
+    header { transition: left .2s ease; }
+    main { transition: padding-left .2s ease; }
+    html.sidebar-ciut header { left: 4rem; }
+    html.sidebar-ciut main { padding-left: 4rem; }
+  }
 </style>
 </head>
 
@@ -270,12 +289,12 @@ if (window.tailwind) {
 <div id="appView" class="hidden">
 
   <!-- Sidebar (desktop) -->
-  <aside class="hidden lg:flex fixed inset-y-0 left-0 w-60 bg-slate-900 text-slate-300 flex-col z-40">
-    <div class="h-16 flex items-center gap-3 px-5 border-b border-white/10">
-      <div class="w-9 h-9 rounded-xl bg-brand-600 grid place-items-center text-lg">🧾</div>
-      <div>
-        <div class="font-bold text-white leading-tight">Kasir Online</div>
-        <div class="text-[11px] text-slate-400" id="namaTokoSidebar">Point of Sale</div>
+  <aside id="sidebar" class="hidden lg:flex fixed inset-y-0 left-0 w-60 bg-slate-900 text-slate-300 flex-col z-40">
+    <div class="side-head h-16 flex items-center gap-3 px-5 border-b border-white/10 shrink-0">
+      <div class="w-9 h-9 shrink-0 rounded-xl bg-brand-600 grid place-items-center text-lg">🧾</div>
+      <div class="side-title min-w-0">
+        <div class="font-bold text-white leading-tight truncate">Kasir Online</div>
+        <div class="text-[11px] text-slate-400 truncate" id="namaTokoSidebar">Point of Sale</div>
       </div>
     </div>
     <nav class="flex-1 p-3 space-y-1 overflow-y-auto text-sm font-medium">
@@ -289,7 +308,7 @@ if (window.tailwind) {
       <button class="nav-btn admin-only w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition" data-view="pengguna">🔐 <span>Pengguna</span></button>
       <button class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition" data-view="pengaturan">⚙️ <span>Pengaturan</span></button>
     </nav>
-    <div class="p-3 border-t border-white/10 text-xs">
+    <div class="side-foot p-3 border-t border-white/10 text-xs">
       <div class="flex items-center gap-2 mb-2 px-2">
         <span id="dotSide" class="w-2 h-2 rounded-full bg-emerald-400"></span>
         <span id="txtSide" class="text-slate-400">Online</span>
@@ -301,6 +320,7 @@ if (window.tailwind) {
   <!-- Topbar -->
   <header class="fixed top-0 inset-x-0 lg:left-60 h-14 bg-white border-b border-slate-200 flex items-center justify-between px-4 z-30">
     <div class="flex items-center gap-3">
+      <button id="btnSidebarCiut" type="button" class="hidden lg:grid w-9 h-9 shrink-0 place-items-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-700 text-sm transition" title="Ciutkan menu">«</button>
       <div class="lg:hidden w-8 h-8 rounded-lg bg-brand-600 grid place-items-center text-white text-sm">🧾</div>
       <div>
         <h2 id="pageTitle" class="font-bold text-slate-800 leading-tight text-sm sm:text-base">Kasir</h2>
@@ -1208,6 +1228,23 @@ function terapkanTema(gelap) {
 }
 $$('.btn-tema').forEach(b => b.addEventListener('click', () => terapkanTema(!temaGelap())));
 terapkanTema(temaGelap());
+
+/* ---- Sidebar ciut / luaskan ---- */
+const KEY_SIDEBAR = 'kasir_sidebar_v1';
+function sidebarCiut() { return document.documentElement.classList.contains('sidebar-ciut'); }
+function aturSidebar(ciut) {
+  document.documentElement.classList.toggle('sidebar-ciut', ciut);
+  try { localStorage.setItem(KEY_SIDEBAR, ciut ? '1' : '0'); } catch (e) {}
+  const b = $('#btnSidebarCiut');
+  if (b) { b.textContent = ciut ? '»' : '«'; b.title = ciut ? 'Perluas menu' : 'Ciutkan menu'; }
+  $$('aside#sidebar .nav-btn').forEach(btn => {
+    const sp = btn.querySelector('span');
+    btn.title = ciut && sp ? sp.textContent : '';
+  });
+}
+const btnSide = $('#btnSidebarCiut');
+if (btnSide) btnSide.addEventListener('click', () => aturSidebar(!sidebarCiut()));
+aturSidebar(sidebarCiut());
 
 /* ================================================================
  * 1. STATE & KONFIGURASI LOKAL
