@@ -12,6 +12,7 @@
 <script>
 if (window.tailwind) {
   tailwind.config = {
+    darkMode: 'class',
     theme: {
       extend: {
         colors: { brand: { 50:'#eef2ff',100:'#e0e7ff',500:'#6366f1',600:'#4f46e5',700:'#4338ca',800:'#3730a3',900:'#312e81' } },
@@ -21,6 +22,7 @@ if (window.tailwind) {
   }
 }
 </script>
+<script>try{if(localStorage.getItem('kasir_tema_v1')==='gelap')document.documentElement.classList.add('dark');}catch(e){}</script>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -157,6 +159,83 @@ if (window.tailwind) {
     html, body { background: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   }
   @page { margin: 3mm; }
+
+  /* ---------- Dark mode (tombol toggle) ---------- */
+  html.dark { color-scheme: dark; }
+  html.dark body { background-color: #0f172a; color: #e2e8f0; }
+
+  html.dark .bg-white { background-color: #1e293b; }
+  html.dark .struk.bg-white { background-color: #fff; }
+  html.dark .bg-slate-50 { background-color: #0f172a; }
+  html.dark .bg-slate-50\/50 { background-color: rgba(15,23,42,.55); }
+  html.dark .bg-slate-100 { background-color: #0f172a; }
+  html.dark .bg-slate-800 { background-color: #334155; }
+  html.dark #btnToggleCart { background-color: #1e293b; }
+  html.dark .bg-brand-50, html.dark .bg-indigo-50 { background-color: #1e1b4b; }
+  html.dark .bg-emerald-50 { background-color: #022c22; }
+  html.dark .bg-emerald-50\/50 { background-color: rgba(2,44,34,.55); }
+  html.dark .bg-amber-50 { background-color: #451a03; }
+  html.dark .bg-rose-50, html.dark .bg-rose-100 { background-color: #4c0519; }
+
+  html.dark .border-slate-100 { border-color: #2a3750; }
+  html.dark .border-slate-200 { border-color: #334155; }
+  html.dark .border-slate-300 { border-color: #475569; }
+  html.dark .divide-slate-100 > :not([hidden]) ~ :not([hidden]) { border-color: #2a3750; }
+  html.dark .border-amber-100 { border-color: #78350f; }
+  html.dark .border-amber-200 { border-color: #92400e; }
+  html.dark .border-brand-100 { border-color: #312e81; }
+  html.dark .border-brand-300 { border-color: #4f46e5; }
+  html.dark .hover\:border-brand-300:hover { border-color: #6366f1; }
+  html.dark .hover\:border-brand-400:hover { border-color: #818cf8; }
+  html.dark .border-emerald-200 { border-color: #065f46; }
+  html.dark .border-rose-200 { border-color: #9f1239; }
+
+  html.dark .text-slate-900 { color: #f8fafc; }
+  html.dark .text-slate-800 { color: #e2e8f0; }
+  html.dark .text-slate-700 { color: #cbd5e1; }
+  html.dark .text-slate-600 { color: #cbd5e1; }
+  html.dark .text-slate-500 { color: #94a3b8; }
+  html.dark .text-brand-600 { color: #818cf8; }
+  html.dark .text-brand-700 { color: #a5b4fc; }
+  html.dark .text-brand-800 { color: #c7d2fe; }
+  html.dark .text-indigo-600 { color: #818cf8; }
+  html.dark .text-indigo-700 { color: #a5b4fc; }
+  html.dark .text-emerald-600 { color: #34d399; }
+  html.dark .text-emerald-700 { color: #6ee7b7; }
+  html.dark .text-emerald-800 { color: #a7f3d0; }
+  html.dark .text-amber-600 { color: #fbbf24; }
+  html.dark .text-amber-700 { color: #fcd34d; }
+  html.dark .text-amber-800 { color: #fde68a; }
+  html.dark .text-rose-500 { color: #fb7185; }
+  html.dark .text-rose-600 { color: #fb7185; }
+  html.dark .text-rose-700 { color: #fda4af; }
+  html.dark .hover\:text-brand-600:hover { color: #a5b4fc; }
+  html.dark .hover\:text-rose-600:hover { color: #fda4af; }
+  html.dark .hover\:text-slate-700:hover { color: #e2e8f0; }
+
+  html.dark .hover\:bg-slate-50:hover, html.dark .hover\:bg-slate-100:hover { background-color: #26344b; }
+  html.dark .hover\:bg-slate-200:hover { background-color: #334155; }
+  html.dark .hover\:bg-brand-50:hover { background-color: #312e81; }
+  html.dark .hover\:bg-rose-100:hover { background-color: #881337; }
+  html.dark .hover\:bg-amber-50:hover { background-color: #78350f; }
+
+  html.dark input:not([type="checkbox"]):not([type="radio"]),
+  html.dark select, html.dark textarea { background-color: #0f172a; color: #e2e8f0; }
+  html.dark select option { background-color: #1e293b; color: #e2e8f0; }
+
+  html.dark .modal-box { background-color: #1e293b; }
+  html.dark .preset.aktif { background: #334155; border-color: #475569; color: #fff; }
+
+  /* tombol tema */
+  .btn-tema { width: 2.25rem; height: 2.25rem; flex-shrink: 0; display: grid; place-items: center; border-radius: 999px; border: 1px solid #e2e8f0; background-color: #f1f5f9; font-size: 1rem; line-height: 1; transition: background-color .15s, transform .12s; }
+  .btn-tema:hover { background-color: #e2e8f0; }
+  .btn-tema:active { transform: scale(.9); }
+  html.dark .btn-tema { background-color: #334155; border-color: #475569; }
+  html.dark .btn-tema:hover { background-color: #475569; }
+
+  @media print {
+    html.dark *:not(body) { background-color: transparent !important; color: #000 !important; border-color: #cbd5e1 !important; }
+  }
 </style>
 </head>
 
@@ -164,6 +243,7 @@ if (window.tailwind) {
 
 <!-- ============================== LOGIN ============================== -->
 <div id="loginView" class="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-brand-900 via-slate-900 to-slate-800">
+  <button class="btn-tema fixed top-4 right-4 z-50" type="button" title="Mode gelap" aria-label="Ganti mode terang/gelap">🌙</button>
   <div class="w-full max-w-sm">
     <div class="text-center mb-5">
       <div class="mx-auto w-16 h-16 rounded-2xl bg-brand-600 grid place-items-center text-3xl shadow-lg shadow-brand-600/40">🧾</div>
@@ -228,6 +308,7 @@ if (window.tailwind) {
       </div>
     </div>
     <div class="flex items-center gap-2 sm:gap-3">
+      <button class="btn-tema" type="button" title="Mode gelap" aria-label="Ganti mode terang/gelap">🌙</button>
       <span id="jamSekarang" class="hidden sm:block text-xs font-mono text-slate-500 tabular-nums"></span>
       <div id="pillStatus" class="flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
         <span id="dotTop" class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
@@ -1097,6 +1178,36 @@ function toast(pesan, tipe) {
 }
 function bukaModal(id) { $('#' + id).classList.add('terbuka'); }
 function tutupModal(id) { $('#' + id).classList.remove('terbuka'); }
+
+/* ---- Tema gelap / terang ---- */
+const KEY_TEMA = 'kasir_tema_v1';
+function temaGelap() { return document.documentElement.classList.contains('dark'); }
+function terapkanTema(gelap) {
+  document.documentElement.classList.toggle('dark', gelap);
+  try { localStorage.setItem(KEY_TEMA, gelap ? 'gelap' : 'terang'); } catch (e) {}
+  $$('.btn-tema').forEach(b => {
+    b.textContent = gelap ? '☀️' : '🌙';
+    b.title = gelap ? 'Mode terang' : 'Mode gelap';
+  });
+  if (window.Chart) {
+    Chart.defaults.color = gelap ? '#94a3b8' : '#666';
+    Chart.defaults.borderColor = gelap ? 'rgba(148,163,184,.18)' : 'rgba(0,0,0,.1)';
+    [window._chartHarian, window._chartMetode].forEach(c => {
+      if (!c || !c.options) return;
+      const lg = c.options.plugins && c.options.plugins.legend;
+      if (lg && lg.labels) lg.labels.color = gelap ? '#cbd5e1' : '#666';
+      if (c.options.scales) Object.keys(c.options.scales).forEach(k => {
+        const s = c.options.scales[k];
+        if (s.ticks) s.ticks.color = gelap ? '#94a3b8' : '#666';
+        if (s.grid) s.grid.borderColor = gelap ? 'rgba(148,163,184,.18)' : 'rgba(0,0,0,.1)';
+      });
+      if (c.canvas && c.canvas.id === 'chartMetode' && c.data.datasets[0]) c.data.datasets[0].borderColor = gelap ? '#1e293b' : '#fff';
+      c.update();
+    });
+  }
+}
+$$('.btn-tema').forEach(b => b.addEventListener('click', () => terapkanTema(!temaGelap())));
+terapkanTema(temaGelap());
 
 /* ================================================================
  * 1. STATE & KONFIGURASI LOKAL
