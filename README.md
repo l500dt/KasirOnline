@@ -26,7 +26,7 @@ Kasir Online Fullstack/
 ├── Code.gs          ← Back-end Google Apps Script (API + akses spreadsheet)
 ├── index.html       ← Seluruh front-end (HTML + Tailwind CSS + JavaScript) dalam 1 file
 ├── index2.html      ← Varian front-end OPSIONAL dengan halaman login (lihat catatan di bawah)
-└── DEPLOYMENT.md    ← Dokumen ini (panduan + skema database)
+└── README.md    ← Dokumen ini (panduan + skema database)
 ```
 
 **Stack**
