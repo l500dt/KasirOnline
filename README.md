@@ -23,10 +23,10 @@ back-end dan **Google Spreadsheet** sebagai database. Tanpa build step, tanpa se
 
 ```
 Kasir Online Fullstack/
-├── Code.gs          ← Back-end Google Apps Script (API + akses spreadsheet)
-├── index.html       ← Seluruh front-end (HTML + Tailwind CSS + JavaScript) dalam 1 file
-├── index2.html      ← Varian front-end OPSIONAL dengan halaman login (lihat catatan di bawah)
-└── README.md    ← Dokumen ini (panduan + skema database)
+├── Code.gs              ← Back-end Google Apps Script (API + akses spreadsheet)
+├── index.html           ← Seluruh front-end (HTML + Tailwind CSS + JavaScript) dalam 1 file
+├── index(login).html    ← Varian front-end OPSIONAL dengan halaman login (lihat catatan di bawah)
+└── README.md            ← Dokumen ini (panduan + skema database)
 ```
 
 **Stack**
@@ -37,10 +37,10 @@ Kasir Online Fullstack/
 | Database | Google Spreadsheet (7 sheet) |
 | Akses | Tanpa login — pembuka link otomatis jadi **Admin**; sesi token di Script Properties (24 jam) |
 
-> **Varian dengan halaman login — `index2.html`**
+> **Varian dengan halaman login — `index(login).html`**
 > Salinan `index.html` yang menambahkan **halaman login** (username + password)
 > sebelum aplikasi terbuka — cocok bila satu perangkat dipakai bergantian.
-> Untuk memakainya di Google Apps Script: tempel isi `index2.html` ke file HTML
+> Untuk memakainya di Google Apps Script: tempel isi `index(login).html` ke file HTML
 > bernama `index` (menggantikan `index.html`) — back-end `Code.gs` tidak perlu
 > diubah karena aksi `login` sudah lama ada. Akun awal: `admin / admin123`
 > (Admin, semua menu) dan `kasir / kasir123` (Kasir — menu Laporan, Pengeluaran,
@@ -265,10 +265,10 @@ function doPost(e) {
 **Hak akses**
 - Setiap pembuka link otomatis memperoleh sesi **Admin** — seluruh menu
   (Kasir, Produk, Pengeluaran, Laporan, Pengguna, Pengaturan) tampil.
-- Ingin gerbang login? Pakai varian **`index2.html`** (lihat
+- Ingin gerbang login? Pakai varian **`index(login).html`** (lihat
   [Struktur File](#1-struktur-file)): setiap pengguna harus login dulu,
   akun awal `admin/admin123` & `kasir/kasir123`, tombol **Keluar** di topbar.
-- Sheet `Pengguna` beserta aksi `login` dipakai oleh varian `index2.html`;
+- Sheet `Pengguna` beserta aksi `login` dipakai oleh varian `index(login).html`;
   versi `index.html` (tanpa login) tidak memakainya.
 
 ---
