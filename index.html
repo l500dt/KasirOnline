@@ -260,8 +260,20 @@ if (window.tailwind) {
 
 <body class="bg-slate-100 text-slate-800">
 
-<!-- ============================== LOGIN ============================== -->
-<div id="loginView" class="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-brand-900 via-slate-900 to-slate-800">
+<!-- ============================== BOOT (tanpa login) ============================== -->
+<div id="bootView" class="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-brand-900 via-slate-900 to-slate-800">
+  <button class="btn-tema fixed top-4 right-4 z-50" type="button" title="Mode gelap" aria-label="Ganti mode terang/gelap">🌙</button>
+  <div class="w-full max-w-sm text-center">
+    <div class="mx-auto w-16 h-16 rounded-2xl bg-brand-600 grid place-items-center text-3xl shadow-lg shadow-brand-600/40">🧾</div>
+    <h1 class="mt-4 text-2xl font-extrabold text-white">Kasir Online</h1>
+    <p class="text-slate-400 text-sm">Point of Sale • Google Sheets Database</p>
+    <div class="mt-4 text-[11px] text-slate-400">Menyiapkan aplikasi…</div>
+    <div id="bootErr" class="hidden mt-4 text-xs text-rose-100 bg-rose-900/70 border border-rose-700 rounded-lg px-3 py-2 text-left"></div>
+  </div>
+</div>
+
+<!-- ============================== LOGIN (aktif bila fitur login dinyalakan) ============================== -->
+<div id="loginView" class="hidden min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-brand-900 via-slate-900 to-slate-800">
   <button class="btn-tema fixed top-4 right-4 z-50" type="button" title="Mode gelap" aria-label="Ganti mode terang/gelap">🌙</button>
   <div class="w-full max-w-sm">
     <div class="text-center mb-5">
@@ -337,7 +349,7 @@ if (window.tailwind) {
       <div class="hidden sm:flex items-center gap-2 text-xs font-semibold text-slate-600 bg-slate-100 px-2.5 py-1.5 rounded-full">
         <span id="userTop">—</span>
       </div>
-      <button id="btnKeluar" class="text-[11px] font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 border border-slate-200 px-2.5 py-1.5 rounded-full transition">Keluar</button>
+      <button id="btnKeluar" class="hidden text-[11px] font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 border border-slate-200 px-2.5 py-1.5 rounded-full transition">Keluar</button>
     </div>
   </header>
 
@@ -495,12 +507,23 @@ if (window.tailwind) {
                 <select id="pJenis" class="mt-1 w-full border border-slate-200 rounded-xl px-3 py-3">
                   <option value="Normal">Milik Sendiri</option>
                   <option value="Titipan">Titipan Orang Lain</option>
+                  <option value="Paket">📦 Paket / Bundling</option>
                 </select>
               </div>
               <div id="wrapPemilik" class="hidden">
                 <label class="text-[11px] font-semibold text-slate-500">NAMA PENITIP / PEMILIK *</label>
                 <input id="pPemilik" autocomplete="off" class="mt-1 w-full border border-slate-200 rounded-xl px-3 py-3" placeholder="mis. Bu Sari">
                 <p class="text-[10px] text-slate-400 mt-1">Barang tidak masuk stok opname — hanya dicatat siapa penitipnya</p>
+              </div>
+              <div id="wrapPaket" class="hidden sm:col-span-2 bg-indigo-50/60 border border-indigo-100 rounded-xl p-3">
+                <label class="text-[11px] font-semibold text-slate-500">KOMPONEN PAKET *</label>
+                <div class="flex gap-2 mt-1">
+                  <select id="pkPilih" class="grow min-w-0 border border-slate-200 rounded-xl px-3 py-2.5 text-sm"></select>
+                  <input id="pkQty" type="number" min="1" value="1" class="w-16 border border-slate-200 rounded-xl px-2 py-2.5 text-sm text-center">
+                  <button type="button" id="pkTambah" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl px-3 py-2.5 text-sm whitespace-nowrap">+ Tambah</button>
+                </div>
+                <div id="pkList" class="mt-2 space-y-1"></div>
+                <p class="text-[10px] text-slate-400 mt-2">HPP paket dihitung otomatis = Σ (HPP komponen × qty). Saat paket terjual, stok yang berkurang adalah stok komponennya.</p>
               </div>
               <div>
                 <label class="text-[11px] font-semibold text-slate-500">KATEGORI</label>
@@ -958,6 +981,24 @@ if (window.tailwind) {
                   <option value="58">58 mm</option><option value="80">80 mm</option>
                 </select></div>
             </div>
+            <div class="pt-1 border-t border-slate-100">
+              <div class="text-[11px] font-semibold text-slate-400 uppercase mt-3 mb-2">Fitur Aplikasi</div>
+              <label class="flex items-center justify-between gap-3 bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 cursor-pointer">
+                <span>
+                  <span class="block text-xs font-semibold text-slate-700">🔐 Halaman Login</span>
+                  <span class="block text-[10px] text-slate-400">Wajib login sebelum memakai kasir</span>
+                </span>
+                <input id="stLogin" type="checkbox" class="w-5 h-5 accent-brand-600 shrink-0">
+              </label>
+              <label class="mt-2 flex items-center justify-between gap-3 bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 cursor-pointer">
+                <span>
+                  <span class="block text-xs font-semibold text-slate-700">👥 Menu Pelanggan</span>
+                  <span class="block text-[10px] text-slate-400">Tampilkan menu member &amp; poin reward</span>
+                </span>
+                <input id="stPelanggan" type="checkbox" class="w-5 h-5 accent-brand-600 shrink-0">
+              </label>
+              <p class="text-[10px] text-slate-400 mt-2">Pengaturan disimpan ke Spreadsheet — otomatis dipakai lagi setiap aplikasi dibuka.</p>
+            </div>
             <button id="btnSimpanSet" class="bg-brand-600 hover:bg-brand-700 text-white font-bold rounded-xl px-5 py-2.5 text-sm">Simpan Pengaturan</button>
           </div>
         </div>
@@ -1258,12 +1299,17 @@ const state = {
   metode: 'Tunai', bayar: 0, pelangganId: '', diskonTipe: 'rp', diskonNilai: 0,
   pajakPct: 0, catatan: '',
   antrean: [], laporan: null, transaksiTerakhir: null, syncing: false,
-  spreadsheetUrl: '',
+  spreadsheetUrl: '', loginAktif: false,
   set: {
     toko: 'Toko Saya', alamat: '', hp: '', footer: 'Terima kasih sudah berbelanja',
-    pajak: 0, poin: 10000, lebar: 80
+    pajak: 0, poin: 10000, lebar: 80, login: false, pelanggan: true
   }
 };
+
+/* Fitur login bawaan bila Spreadsheet belum pernah menyimpan pengaturan.
+ * index.html = tanpa gerbang login (langsung sesi Admin);
+ * index(login).html = memakai halaman login. */
+const LOGIN_BAWAAN = false;
 
 const JUDUL = {
   kasir: ['Kasir', 'Penjualan cepat tanpa ribet'],
@@ -1308,6 +1354,7 @@ async function bootstrap() {
   state.pelanggan = d.pelanggan || [];
   state.pengguna = d.pengguna || [];
   state.spreadsheetUrl = d.spreadsheetUrl || '';
+  terapkanPengaturanServer(d.pengaturan);
   simpanJSON(LS.cache, {
     produk: state.produk, kategori: state.kategori, pelanggan: state.pelanggan,
     pengguna: state.pengguna, spreadsheetUrl: state.spreadsheetUrl, waktu: sekarangStr()
@@ -1329,15 +1376,27 @@ function renderSemua() {
   if ($('#listStokMenipis')) renderStokMenipis();
 }
 
-function tampilkanLogin(pesan) {
-  $('#loginView').classList.remove('hidden');
+function tampilkanBoot(pesan) {
+  $('#bootView').classList.remove('hidden');
   $('#appView').classList.add('hidden');
+  $('#loginView').classList.add('hidden');
+  if (pesan) {
+    const e = $('#bootErr');
+    e.textContent = pesan;
+    e.classList.remove('hidden');
+  }
+}
+/** Tampilkan gerbang login (dipakai bila fitur login diaktifkan di Pengaturan). */
+function tampilkanLogin(pesan) {
+  $('#bootView').classList.add('hidden');
+  $('#appView').classList.add('hidden');
+  $('#loginView').classList.remove('hidden');
   const e = $('#loginErr');
-  if (pesan) { e.textContent = pesan; e.classList.remove('hidden'); }
-  else e.classList.add('hidden');
-  if (window.innerWidth >= 1024) $('#loginUser').focus();
+  if (pesan) { e.textContent = pesan; e.classList.remove('hidden'); } else e.classList.add('hidden');
+  if (window.innerWidth >= 1024) setTimeout(() => $('#loginUser').focus(), 80);
 }
 function bukaApp() {
+  $('#bootView').classList.add('hidden');
   $('#loginView').classList.add('hidden');
   $('#appView').classList.remove('hidden');
   const admin = state.user && state.user.peran === 'Admin';
@@ -1347,7 +1406,7 @@ function bukaApp() {
   applySet(); renderSemua(); updateStatusKoneksi(); nav('kasir');
 }
 
-/* ---- Halaman login: username + password → sesi token (24 jam) ---- */
+/* ---- Halaman login (hanya dipakai bila fitur login aktif) ---- */
 $('#loginForm').addEventListener('submit', async e => {
   e.preventDefault();
   const err = $('#loginErr');
@@ -1374,13 +1433,33 @@ $('#loginForm').addEventListener('submit', async e => {
     btn.disabled = false; btn.textContent = 'Masuk';
   }
 });
-
 $('#btnKeluar').addEventListener('click', () => {
   localStorage.removeItem(LS.sesi);
   state.token = null; state.user = null;
   $('#loginPass').value = '';
-  tampilkanLogin();
+  if (state.loginAktif) tampilkanLogin(''); else location.reload();
 });
+
+/** Tanpa halaman login: setiap pembuka link langsung mendapat sesi Admin.
+ *  Bila sheet Pengguna belum ada (buka link untuk pertama kali), database
+ *  dibuat otomatis lewat 'setup' lalu sesi Admin diberikan lagi. */
+async function dapatkanSesiAdmin() {
+  const simpan = d => {
+    state.token = d.token; state.user = d.user;
+    simpanJSON(LS.sesi, { token: d.token, user: d.user });
+    return d;
+  };
+  try {
+    return simpan(await call('auth.admin'));
+  } catch (e) {
+    try {
+      await call('setup');
+      return simpan(await call('auth.admin'));
+    } catch (e2) {
+      throw new Error('Tidak bisa menyiapkan sesi Admin: ' + e2.message);
+    }
+  }
+}
 
 /* ================================================================
  * 4. NAVIGASI
@@ -1472,6 +1551,47 @@ function produkTampil() {
 function isTitipan(p) {
   return !!p && (String(p.Jenis_Produk || '') === 'Titipan' || !!String(p.Pemilik_Titipan || '').trim());
 }
+/* ---- Paket / bundling: stok & HPP mengikuti komponen ---- */
+function produkById(id) { return state.produk.find(x => x.ID_Produk === id); }
+function isPaket(p) { return !!p && String(p.Jenis_Produk || '') === 'Paket'; }
+function komponenPaket(p) {
+  return ((p && p.Komponen) || []).map(k => ({ ID_Komponen: k.ID_Komponen, Qty: Number(k.Qty) || 1 }));
+}
+function hppKomponenList(list) {
+  return (list || []).reduce((s, k) => {
+    const c = produkById(k.ID_Komponen);
+    return s + (c ? (Number(c.Harga_Beli) || 0) * (Number(k.Qty) || 0) : 0);
+  }, 0);
+}
+function hppPaket(p) { return hppKomponenList(komponenPaket(p)); }
+function hppSatuan(p) { return isPaket(p) ? hppPaket(p) : (Number(p.Harga_Beli) || 0); }
+/** Pemakaian komponen oleh keranjang (kecuali satu item bila diberi id). */
+function pemakaianKomponen(kecualiId) {
+  const use = {};
+  state.cart.forEach(it => {
+    if (kecualiId && it.id === kecualiId) return;
+    const p = produkById(it.id); if (!p) return;
+    if (isPaket(p)) komponenPaket(p).forEach(k => { use[k.ID_Komponen] = (use[k.ID_Komponen] || 0) + k.Qty * it.qty; });
+    else if (!isTitipan(p)) use[it.id] = (use[it.id] || 0) + it.qty;
+  });
+  return use;
+}
+/** Maks qty yang masih bisa ditambahkan untuk sebuah produk (paket→komponen). */
+function maksQty(id) {
+  const p = produkById(id); if (!p) return 0;
+  if (isTitipan(p)) return Infinity;
+  const use = pemakaianKomponen(id);
+  if (isPaket(p)) {
+    let maks = Infinity;
+    komponenPaket(p).forEach(k => {
+      const c = produkById(k.ID_Komponen);
+      if (!c || isTitipan(c)) return;
+      maks = Math.min(maks, Math.floor(Math.max(0, (Number(c.Stok) || 0) - (use[k.ID_Komponen] || 0)) / k.Qty));
+    });
+    return maks === Infinity ? Infinity : maks;
+  }
+  return Math.max(0, (Number(p.Stok) || 0) - (use[id] || 0));
+}
 function renderGrid() {
   const list = produkTampil();
   $('#hitungProduk').textContent = list.length + ' produk ditampilkan';
@@ -1483,15 +1603,20 @@ function renderGrid() {
   }
   $('#gridProduk').innerHTML = list.map(p => {
     const titipan = isTitipan(p);
+    const paket = isPaket(p);
     const stok = Number(p.Stok) || 0;
-    const habis = !titipan && stok <= 0;
+    const maks = paket ? maksQty(p.ID_Produk) : stok;
+    const habis = !titipan && maks <= 0;
     const labelBawah = titipan
       ? '<span class="text-indigo-600 font-bold">📦 Titipan' + (p.Pemilik_Titipan ? ' • ' + esc(p.Pemilik_Titipan) : '') + '</span>'
-      : (habis ? 'STOK HABIS' : 'Stok ' + stok + ' ' + esc(p.Satuan || ''));
+      : paket
+        ? '<span class="' + (habis ? 'text-rose-500 font-bold' : 'text-indigo-600 font-bold') + '">🎁 Paket' +
+          (habis ? ' • komponen habis' : (isFinite(maks) ? ' • bisa ' + maks : '')) + '</span>'
+        : (habis ? 'STOK HABIS' : 'Stok ' + stok + ' ' + esc(p.Satuan || ''));
     return '<button class="produk-card bg-white border border-slate-200 rounded-xl p-3 text-left shadow-sm ' +
       (habis ? 'opacity-50' : 'hover:border-brand-400 hover:shadow-md') + '" onclick="tambahKeranjang(\'' + p.ID_Produk + '\')">' +
       '<div class="h-12 w-12 rounded-lg grid place-items-center text-xl mb-2" style="background:' + warnaKat(p.Kategori) + '">' +
-      (titipan ? '📦' : emojiKat(p.Kategori)) + '</div>' +
+      (titipan ? '📦' : paket ? '🎁' : emojiKat(p.Kategori)) + '</div>' +
       '<div class="text-xs font-semibold leading-tight text-slate-700" style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:2.4em">' +
       esc(p.Nama_Produk) + '</div>' +
       '<div class="text-brand-600 font-extrabold text-sm mt-1">' + rp(p.Harga_Jual) + '</div>' +
@@ -1503,7 +1628,7 @@ function renderGrid() {
 
 function renderAlertStok() {
   const menipis = state.produk.filter(p =>
-    p.Status_Aktif !== 'Nonaktif' && !isTitipan(p) &&
+    p.Status_Aktif !== 'Nonaktif' && !isTitipan(p) && !isPaket(p) &&
     (Number(p.Stok) || 0) <= (Number(p.Minimal_Stok) || 0));
   const html = menipis.length
     ? '<div class="flex items-start gap-2 bg-amber-50 border border-amber-200 text-amber-800 rounded-xl px-3 py-2.5 text-xs font-medium">' +
@@ -1520,19 +1645,24 @@ function renderAlertStok() {
 
 /* ---- Keranjang ---- */
 function tambahKeranjang(id) {
-  const p = state.produk.find(x => x.ID_Produk === id);
+  const p = produkById(id);
   if (!p) return;
   if (p.Status_Aktif === 'Nonaktif') { toast('Produk nonaktif', 'err'); return; }
   const titipan = isTitipan(p);
-  const stok = Number(p.Stok) || 0;
+  const paket = isPaket(p);
   let item = state.cart.find(i => i.id === id);
   const qtyBaru = item ? item.qty + 1 : 1;
-  if (!titipan && qtyBaru > stok) { toast('Stok ' + p.Nama_Produk + ' tersisa ' + stok, 'err'); return; }
+  const maks = maksQty(id);
+  if (!titipan && qtyBaru > maks) {
+    toast(paket ? 'Stok komponen paket ' + p.Nama_Produk + ' tinggal ' + (isFinite(maks) ? maks : 0)
+                : 'Stok ' + p.Nama_Produk + ' tersisa ' + maks, 'err');
+    return;
+  }
   if (!item) {
     item = {
       id: p.ID_Produk, kode: p.Kode_Barcode, nama: p.Nama_Produk,
-      harga: Number(p.Harga_Jual) || 0, hpp: Number(p.Harga_Beli) || 0,
-      satuan: p.Satuan || '', stok: stok, qty: 0, disc: 0, titipan: titipan
+      harga: Number(p.Harga_Jual) || 0, hpp: hppSatuan(p),
+      satuan: p.Satuan || '', stok: Number(p.Stok) || 0, qty: 0, disc: 0, titipan: titipan, paket: paket
     };
     state.cart.push(item);
   }
@@ -1543,7 +1673,11 @@ function ubahQty(id, delta) {
   const i = state.cart.find(x => x.id === id); if (!i) return;
   const q = i.qty + delta;
   if (q <= 0) { hapusItem(id); return; }
-  if (!i.titipan && q > i.stok) { toast('Stok tersisa ' + i.stok, 'err'); return; }
+  const maks = maksQty(id);
+  if (!i.titipan && q > maks) {
+    toast(i.paket ? 'Stok komponen paket tinggal ' + (isFinite(maks) ? maks : 0) : 'Stok tersisa ' + maks, 'err');
+    return;
+  }
   i.qty = q; renderKeranjang();
 }
 function setDisc(id, val) {
@@ -1723,8 +1857,16 @@ $('#btnBayar').addEventListener('click', prosesBayar);
 
 function kurangiStokLokal(payload) {
   payload.items.forEach(it => {
-    const p = state.produk.find(x => x.ID_Produk === it.idProduk);
-    if (p && !isTitipan(p)) p.Stok = Math.max(0, (Number(p.Stok) || 0) - (Number(it.qty) || 0));
+    const p = produkById(it.idProduk);
+    if (!p) return;
+    if (isPaket(p)) {
+      komponenPaket(p).forEach(k => {
+        const c = produkById(k.ID_Komponen);
+        if (c && !isTitipan(c)) c.Stok = Math.max(0, (Number(c.Stok) || 0) - k.Qty * (Number(it.qty) || 0));
+      });
+    } else if (!isTitipan(p)) {
+      p.Stok = Math.max(0, (Number(p.Stok) || 0) - (Number(it.qty) || 0));
+    }
   });
   if (payload.pelangganId) {
     const pl = state.pelanggan.find(x => x.ID_Pelanggan === payload.pelangganId);
@@ -1755,9 +1897,18 @@ function strukHtml() {
   const pl = t.pelanggan;
   const items = p.items.map(i => {
     const line = i.harga * i.qty - (Number(i.diskon) || 0);
-    return '<tr><td>' + esc(i.nama) + '</td><td style="text-align:right">' + rp(line) + '</td></tr>' +
+    let baris = '<tr><td>' + esc(i.nama) + '</td><td style="text-align:right">' + rp(line) + '</td></tr>' +
       '<tr><td style="padding-left:8px;font-size:11px">' + i.qty + ' x ' + rp(i.harga) +
       (i.diskon ? '  (-' + rp(i.diskon) + ')' : '') + '</td><td></td></tr>';
+    const pr = produkById(i.idProduk);
+    if (pr && isPaket(pr)) {
+      komponenPaket(pr).forEach(k => {
+        const c = produkById(k.ID_Komponen);
+        baris += '<tr><td style="padding-left:14px;font-size:10px;color:#555">• ' +
+          esc(c ? c.Nama_Produk : '?') + ' ×' + (k.Qty * i.qty) + '</td><td></td></tr>';
+      });
+    }
+    return baris;
   }).join('');
   return '<div style="text-align:center">' +
       '<div style="font-weight:bold;font-size:14px">' + esc(state.set.toko) + '</div>' +
@@ -1800,6 +1951,13 @@ function strukTeks() {
   p.items.forEach(i => {
     L.push(i.nama);
     L.push('  ' + i.qty + ' x ' + rp(i.harga) + ' = ' + rp(i.harga * i.qty - (Number(i.diskon) || 0)));
+    const pr = produkById(i.idProduk);
+    if (pr && isPaket(pr)) {
+      komponenPaket(pr).forEach(k => {
+        const c = produkById(k.ID_Komponen);
+        L.push('    • ' + (c ? c.Nama_Produk : '?') + ' x' + (k.Qty * i.qty));
+      });
+    }
   });
   L.push('------------------------');
   L.push('Subtotal: ' + rp(sub));
@@ -1903,10 +2061,10 @@ function renderTabelProduk() {
     if (q && (String(p.Nama_Produk) + ' ' + String(p.Kode_Barcode) + ' ' + String(p.Kategori)).toLowerCase().indexOf(q) < 0) return false;
     if (f === 'aktif' && p.Status_Aktif === 'Nonaktif') return false;
     if (f === 'nonaktif' && p.Status_Aktif !== 'Nonaktif') return false;
-    if (f === 'menipis' && !(!isTitipan(p) && (Number(p.Stok) || 0) <= (Number(p.Minimal_Stok) || 0))) return false;
+    if (f === 'menipis' && !(!isTitipan(p) && !isPaket(p) && (Number(p.Stok) || 0) <= (Number(p.Minimal_Stok) || 0))) return false;
     return true;
   });
-  const nilai = state.produk.filter(p => !isTitipan(p))
+  const nilai = state.produk.filter(p => !isTitipan(p) && !isPaket(p))
     .reduce((s, p) => s + (Number(p.Stok) || 0) * (Number(p.Harga_Beli) || 0), 0);
   $('#infoProduk').textContent = list.length + ' dari ' + state.produk.length + ' produk • Nilai aset inventaris ' + rp(nilai);
 
@@ -1917,16 +2075,29 @@ function renderTabelProduk() {
   $('#tblProduk').innerHTML = list.map(p => {
     const stok = Number(p.Stok) || 0, min = Number(p.Minimal_Stok) || 0;
     const titipan = isTitipan(p);
-    const menipis = !titipan && p.Status_Aktif !== 'Nonaktif' && stok <= min;
+    const paket = isPaket(p);
+    const menipis = !titipan && !paket && p.Status_Aktif !== 'Nonaktif' && stok <= min;
     const badge = p.Status_Aktif === 'Nonaktif'
       ? '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">Nonaktif</span>'
       : '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700">Aktif</span>';
+    const isiPaket = paket
+      ? komponenPaket(p).map(k => {
+          const c = produkById(k.ID_Komponen);
+          return esc(c ? c.Nama_Produk : '?') + (k.Qty > 1 ? '×' + k.Qty : '');
+        }).join(' + ')
+      : '';
     const selJenis = titipan
       ? '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700">📦 Titipan Orang Lain</span>' +
         (p.Pemilik_Titipan ? '<div class="text-[10px] text-slate-400 mt-0.5">' + esc(p.Pemilik_Titipan) + '</div>' : '')
+      : paket
+      ? '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700">🎁 Paket / Bundling</span>' +
+        (isiPaket ? '<div class="text-[10px] text-slate-400 mt-0.5">' + isiPaket + '</div>' : '')
       : '<span class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">Milik Sendiri</span>';
     const selStok = titipan
       ? '<span class="text-[10px] text-indigo-600 font-semibold">tanpa stok</span>'
+      : paket
+      ? (function () { const m = maksQty(p.ID_Produk); return '<span class="text-[10px] text-indigo-600 font-semibold">dari komponen' +
+          (isFinite(m) ? ' · bisa ' + m : '') + '</span>'; })()
       : '<span class="text-xs font-bold px-2 py-1 rounded-lg ' +
         (stok <= 0 ? 'bg-rose-100 text-rose-700' : menipis ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-700') +
         '">' + stok + '</span>' + (menipis ? '<div class="text-[9px] text-amber-600 font-bold">≤ min ' + min + '</div>' : '');
@@ -1935,13 +2106,13 @@ function renderTabelProduk() {
         '<div class="text-[11px] text-slate-400">' + esc(p.Satuan || '') + '</div></td>' +
       '<td class="px-4 py-2.5 text-xs">' + esc(p.Kategori || '—') + '</td>' +
       '<td class="px-4 py-2.5">' + selJenis + '</td>' +
-      '<td class="px-4 py-2.5 text-right text-xs tabular-nums">' + rp(p.Harga_Beli) + '</td>' +
+      '<td class="px-4 py-2.5 text-right text-xs tabular-nums">' + rp(paket ? hppPaket(p) : p.Harga_Beli) + '</td>' +
       '<td class="px-4 py-2.5 text-right text-xs font-bold tabular-nums">' + rp(p.Harga_Jual) + '</td>' +
       '<td class="px-4 py-2.5 text-center">' + selStok + '</td>' +
       '<td class="px-4 py-2.5 text-center">' + badge + '</td>' +
       '<td class="px-4 py-2.5 text-right whitespace-nowrap">' +
         '<button class="text-xs font-semibold text-brand-600 hover:underline" onclick="editProduk(\'' + p.ID_Produk + '\')">Edit</button>' +
-        (titipan ? '' : ' · <button class="text-xs font-semibold text-emerald-600 hover:underline" onclick="bukaRestok(\'' + p.ID_Produk + '\')">Restok</button>') +
+        (titipan || paket ? '' : ' · <button class="text-xs font-semibold text-emerald-600 hover:underline" onclick="bukaRestok(\'' + p.ID_Produk + '\')">Restok</button>') +
         ' · <button class="text-xs font-semibold text-slate-500 hover:underline" onclick="toggleProduk(\'' + p.ID_Produk + '\')">' +
           (p.Status_Aktif === 'Nonaktif' ? 'Aktifkan' : 'Nonaktif') + '</button> · ' +
         '<button class="text-xs font-semibold text-rose-600 hover:underline" onclick="hapusProduk(\'' + p.ID_Produk + '\')">Hapus</button>' +
@@ -1960,37 +2131,86 @@ function renderChipKategoriForm() {
     '<button type="button" class="chip-kat border border-slate-200 rounded-lg px-2 py-1 text-[11px] text-slate-500 hover:border-brand-400 hover:text-brand-600" data-kat="' +
     esc(k.Nama_Kategori) + '">' + esc(k.Nama_Kategori) + '</button>').join('');
 }
+/* Daftar komponen paket yang sedang diedit di form produk. */
+let paketKomp = [];
+function renderOpsiPaket() {
+  const sel = $('#pkPilih'); if (!sel) return;
+  const pId = $('#pId').value;
+  const list = state.produk
+    .filter(p => !isTitipan(p) && !isPaket(p) && p.ID_Produk !== pId)
+    .sort((a, b) => String(a.Nama_Produk).localeCompare(String(b.Nama_Produk)));
+  const pilih = sel.value;
+  if (!list.length) {
+    sel.innerHTML = '<option value="">— belum ada produk komponen —</option>';
+    sel.disabled = true; return;
+  }
+  sel.disabled = false;
+  sel.innerHTML = list.map(p => '<option value="' + p.ID_Produk + '">' + esc(p.Nama_Produk) +
+    ' · ' + rp(p.Harga_Beli) + '</option>').join('');
+  if (pilih && list.some(p => p.ID_Produk === pilih)) sel.value = pilih;
+}
+function renderListPaket() {
+  const box = $('#pkList'); if (!box) return;
+  if (!paketKomp.length) {
+    box.innerHTML = '<div class="text-[11px] text-slate-400">Belum ada komponen. Tambahkan minimal 1 barang.</div>';
+    return;
+  }
+  box.innerHTML = paketKomp.map((k, i) => {
+    const c = produkById(k.ID_Komponen);
+    return '<div class="flex items-center justify-between gap-2 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs">' +
+      '<span class="truncate font-semibold text-slate-700">' + esc(c ? c.Nama_Produk : '(produk terhapus)') + '</span>' +
+      '<span class="flex items-center gap-2 shrink-0">' +
+        '<span class="text-slate-400 tabular-nums">' + k.Qty + ' × ' + rp(c ? c.Harga_Beli : 0) + '</span>' +
+        '<button type="button" class="text-rose-500 hover:text-rose-700 font-bold" data-hapus-komp="' + i + '" title="Hapus">✕</button>' +
+      '</span></div>';
+  }).join('') +
+  '<div class="text-[11px] font-bold text-indigo-600 mt-1">HPP paket: ' + rp(hppKomponenList(paketKomp)) + '</div>';
+}
 function resetFormProduk() {
   const f = $('#formProduk'); if (!f) return;
   f.reset(); $('#pId').value = ''; $('#pStatus').value = 'Aktif';
   $('#pJenis').value = 'Normal'; $('#pPemilik').value = '';
+  paketKomp = [];
   $('#judulHalamanProduk').textContent = '🆕 Tambah Produk Baru';
-  isiDatalistKategori(); renderPreviewProduk();
+  isiDatalistKategori(); renderOpsiPaket(); renderPreviewProduk();
 }
 function renderPreviewProduk() {
   if (!$('#pNama')) return;
+  const jenis = $('#pJenis').value;
+  const titipan = jenis === 'Titipan';
+  const paket = jenis === 'Paket';
   const kat = $('#pKategori').value.trim();
-  const beli = nv($('#pBeli')), jual = nv($('#pJual')), stok = nv($('#pStok'));
-  const titipan = $('#pJenis').value === 'Titipan';
+  const jual = nv($('#pJual')), stok = nv($('#pStok'));
   const pemilik = $('#pPemilik').value.trim();
   $('#wrapPemilik').classList.toggle('hidden', !titipan);
-  $('#wrapStokAwal').classList.toggle('hidden', titipan);
-  $('#wrapMinStok').classList.toggle('hidden', titipan);
-  $('#lblHBeli').textContent = titipan ? 'HPP / HARGA KE PENITIP *' : 'HARGA BELI / HPP';
+  $('#wrapStokAwal').classList.toggle('hidden', titipan || paket);
+  $('#wrapMinStok').classList.toggle('hidden', titipan || paket);
+  $('#wrapPaket').classList.toggle('hidden', !paket);
+  const inputBeli = $('#pBeli');
+  inputBeli.readOnly = paket;
+  const beli = paket ? hppKomponenList(paketKomp) : nv(inputBeli);
+  if (paket) inputBeli.value = beli;
+  $('#lblHBeli').textContent = titipan ? 'HPP / HARGA KE PENITIP *'
+    : paket ? 'HPP PAKET (OTOMATIS DARI KOMPONEN)' : 'HARGA BELI / HPP';
   const laba = jual - beli;
   const margin = jual > 0 ? Math.round(laba / jual * 1000) / 10 : 0;
   $('#pvNama').textContent = $('#pNama').value.trim() || 'Nama Produk';
   $('#pvKat').textContent = titipan
     ? (pemilik ? '📦 Titipan • ' + pemilik : '📦 Titipan')
-    : (kat || 'Tanpa kategori');
-  $('#pvEmoji').textContent = titipan ? '📦' : emojiKat(kat);
+    : paket ? '🎁 Paket / Bundling' : (kat || 'Tanpa kategori');
+  $('#pvEmoji').textContent = titipan ? '📦' : paket ? '🎁' : emojiKat(kat);
   $('#pvJual').textContent = rp(jual);
-  $('#pvStok').textContent = titipan ? 'Tanpa stok opname' : 'Stok ' + stok + ' ' + ($('#pSatuan').value || 'pcs');
+  $('#pvStok').textContent = titipan ? 'Tanpa stok opname'
+    : paket ? ('Berisi ' + paketKomp.length + ' komponen') : 'Stok ' + stok + ' ' + ($('#pSatuan').value || 'pcs');
   $('#pvLaba').textContent = rp(laba);
   $('#pvMargin').textContent = margin + '%';
-  $('#pvNilaiStok').textContent = titipan ? 'Rp0 (bukan milik toko)' : rp(beli * stok);
+  $('#pvNilaiStok').textContent = titipan ? 'Rp0 (bukan milik toko)'
+    : paket ? 'Rp0 (stok ikut komponen)' : rp(beli * stok);
   const w = $('#peringatanHarga');
-  if (jual > 0 && jual < beli) {
+  if (paket && !paketKomp.length) {
+    w.textContent = '⚠️ Paket belum punya komponen — tambahkan minimal 1 barang.';
+    w.className = 'mt-4 text-xs font-semibold rounded-xl px-3 py-2.5 bg-rose-50 border border-rose-200 text-rose-700';
+  } else if (jual > 0 && jual < beli) {
     w.textContent = '⚠️ Harga jual ' + rp(jual) + ' lebih kecil dari HPP ' + rp(beli) + ' — produk ini merugi per item.';
     w.className = 'mt-4 text-xs font-semibold rounded-xl px-3 py-2.5 bg-rose-50 border border-rose-200 text-rose-700';
   } else if (jual > 0 && jual === beli) {
@@ -1999,14 +2219,32 @@ function renderPreviewProduk() {
   } else {
     w.textContent = ''; w.className = 'hidden';
   }
+  if (paket) renderListPaket();
 }
 ['pNama', 'pKategori', 'pBeli', 'pJual', 'pStok', 'pSatuan', 'pMin', 'pStatus', 'pPemilik'].forEach(id => {
   const el = $('#' + id); if (el) el.addEventListener('input', renderPreviewProduk);
 });
-$('#pJenis').addEventListener('change', renderPreviewProduk);
+$('#pJenis').addEventListener('change', () => {
+  if ($('#pJenis').value === 'Paket') renderOpsiPaket();
+  renderPreviewProduk();
+});
 $('#chipKategoriForm').addEventListener('click', e => {
   const b = e.target.closest('.chip-kat'); if (!b) return;
   $('#pKategori').value = b.dataset.kat; renderPreviewProduk();
+});
+$('#pkTambah').addEventListener('click', () => {
+  const id = $('#pkPilih').value;
+  if (!id) { toast('Pilih produk komponen dulu', 'err'); return; }
+  const q = Math.max(1, nv($('#pkQty')));
+  const ada = paketKomp.find(k => k.ID_Komponen === id);
+  if (ada) ada.Qty += q; else paketKomp.push({ ID_Komponen: id, Qty: q });
+  $('#pkQty').value = 1;
+  renderListPaket(); renderPreviewProduk();
+});
+$('#pkList').addEventListener('click', e => {
+  const b = e.target.closest('[data-hapus-komp]'); if (!b) return;
+  paketKomp.splice(Number(b.dataset.hapusKomp), 1);
+  renderListPaket(); renderPreviewProduk();
 });
 
 $('#btnTambahProduk').addEventListener('click', () => {
@@ -2019,31 +2257,41 @@ function editProduk(id) {
   const p = state.produk.find(x => x.ID_Produk === id); if (!p) return;
   nav('produk-baru');
   $('#judulHalamanProduk').textContent = '✏️ Edit Produk';
+  const paket = isPaket(p);
   $('#pId').value = p.ID_Produk; $('#pNama').value = p.Nama_Produk;
-  $('#pJenis').value = isTitipan(p) ? 'Titipan' : 'Normal';
+  $('#pJenis').value = paket ? 'Paket' : (isTitipan(p) ? 'Titipan' : 'Normal');
   $('#pPemilik').value = p.Pemilik_Titipan || '';
   $('#pKategori').value = p.Kategori || '';
-  $('#pBeli').value = p.Harga_Beli; $('#pJual').value = p.Harga_Jual;
+  $('#pBeli').value = paket ? hppPaket(p) : p.Harga_Beli;
+  $('#pJual').value = p.Harga_Jual;
   $('#pStok').value = p.Stok; $('#pSatuan').value = p.Satuan || 'pcs';
   $('#pMin').value = p.Minimal_Stok; $('#pStatus').value = p.Status_Aktif || 'Aktif';
-  renderPreviewProduk();
+  paketKomp = paket ? komponenPaket(p).slice() : [];
+  renderOpsiPaket(); renderPreviewProduk();
   setTimeout(() => $('#pNama').focus(), 80);
 }
 async function simpanFormProduk(lanjut) {
-  const titipan = $('#pJenis').value === 'Titipan';
+  const jenis = $('#pJenis').value;
+  const titipan = jenis === 'Titipan';
+  const paket = jenis === 'Paket';
   const data = {
     ID_Produk: $('#pId').value || undefined,
     Nama_Produk: $('#pNama').value,
-    Kategori: $('#pKategori').value, Harga_Beli: nv($('#pBeli')), Harga_Jual: nv($('#pJual')),
-    Stok: titipan ? 0 : nv($('#pStok')), Satuan: $('#pSatuan').value,
-    Minimal_Stok: titipan ? 0 : nv($('#pMin')),
+    Kategori: $('#pKategori').value,
+    Harga_Beli: paket ? hppKomponenList(paketKomp) : nv($('#pBeli')),
+    Harga_Jual: nv($('#pJual')),
+    Stok: (titipan || paket) ? 0 : nv($('#pStok')),
+    Satuan: $('#pSatuan').value,
+    Minimal_Stok: (titipan || paket) ? 0 : nv($('#pMin')),
     Status_Aktif: $('#pStatus').value,
-    Jenis_Produk: titipan ? 'Titipan' : 'Normal',
-    Pemilik_Titipan: titipan ? $('#pPemilik').value.trim() : ''
+    Jenis_Produk: jenis,
+    Pemilik_Titipan: titipan ? $('#pPemilik').value.trim() : '',
+    Komponen: paket ? paketKomp.map(k => ({ ID_Komponen: k.ID_Komponen, Qty: Number(k.Qty) || 1 })) : []
   };
   if (!String(data.Nama_Produk).trim()) { toast('Nama produk wajib diisi', 'err'); $('#pNama').focus(); return; }
   if (data.Harga_Jual <= 0) { toast('Harga jual harus lebih dari 0', 'err'); $('#pJual').focus(); return; }
   if (titipan && !data.Pemilik_Titipan) { toast('Nama penitip wajib diisi untuk produk titipan', 'err'); $('#pPemilik').focus(); return; }
+  if (paket && !data.Komponen.length) { toast('Paket harus punya minimal 1 komponen', 'err'); return; }
   try {
     const hasil = await call('produk.simpan', { data: data });
     const i = state.produk.findIndex(x => x.ID_Produk === hasil.ID_Produk);
@@ -2090,12 +2338,12 @@ function renderOpsiStok() {
   const sel = $('#rProduk'); if (!sel) return;
   const q = ($('#rCari').value || '').toLowerCase();
   const pilih = sel.value;
-  const list = state.produk.filter(p => !isTitipan(p)).filter(p => !q ||
+  const list = state.produk.filter(p => !isTitipan(p) && !isPaket(p)).filter(p => !q ||
     (String(p.Nama_Produk) + ' ' + String(p.Kode_Barcode || '') + ' ' + String(p.Kategori || ''))
       .toLowerCase().indexOf(q) >= 0);
   if (!list.length) {
     sel.innerHTML = '<option value="">— ' +
-      (state.produk.filter(p => !isTitipan(p)).length
+      (state.produk.filter(p => !isTitipan(p) && !isPaket(p)).length
         ? 'produk tidak ditemukan' : 'tidak ada produk normal (titipan tanpa stok)') + ' —</option>';
     sel.disabled = true;
     renderInfoStok(''); return;
@@ -2129,7 +2377,7 @@ function updateRingkasanStok() {
 function renderStokMenipis() {
   const box = $('#listStokMenipis'); if (!box) return;
   const list = state.produk.filter(p =>
-    !isTitipan(p) && p.Status_Aktif !== 'Nonaktif' &&
+    !isTitipan(p) && !isPaket(p) && p.Status_Aktif !== 'Nonaktif' &&
     (Number(p.Stok) || 0) <= (Number(p.Minimal_Stok) || 0));
   $('#jmlMenipis').textContent = list.length;
   box.innerHTML = list.length
@@ -2156,6 +2404,7 @@ function bukaRestok(id) {
   const prod = state.produk.find(p => p.ID_Produk === id);
   if (!prod) return;
   if (isTitipan(prod)) { toast('Produk titipan tidak mengelola stok', 'err'); return; }
+  if (isPaket(prod)) { toast('Stok paket mengikuti komponennya', 'err'); return; }
   nav('tambah-stok');
   $('#rCari').value = '';
   $('#rProduk').value = id;
@@ -2646,6 +2895,38 @@ $('#btnExportXlsx').addEventListener('click', () => {
 /* ================================================================
  * 12. PENGATURAN LOKAL
  * ================================================================ */
+/* Key pengaturan di Spreadsheet <-> state.set lokal */
+const PETA_SET = {
+  set_toko: 'toko', set_alamat: 'alamat', set_hp: 'hp', set_footer: 'footer',
+  set_pajak: 'pajak', set_poin: 'poin', set_lebar: 'lebar',
+  login_aktif: 'login', pelanggan_aktif: 'pelanggan'
+};
+const SET_ANGKA = ['set_pajak', 'set_poin', 'set_lebar'];
+const SET_BOOL = ['login_aktif', 'pelanggan_aktif'];
+
+/** Terapkan pengaturan dari Spreadsheet (menimpa nilai lokal). Kunci yang belum
+ *  pernah disimpan tidak diubah supaya nilai bawaan tiap halaman tetap dipakai. */
+function terapkanPengaturanServer(pg) {
+  if (!pg) return;
+  Object.keys(PETA_SET).forEach(k => {
+    if (pg[k] === undefined) return;
+    const f = PETA_SET[k];
+    if (SET_BOOL.indexOf(k) >= 0) state.set[f] = String(pg[k]) === '1' || pg[k] === true;
+    else if (SET_ANGKA.indexOf(k) >= 0) state.set[f] = Number(pg[k]) || 0;
+    else state.set[f] = String(pg[k]);
+  });
+  state.pajakPct = Number(state.set.pajak) || 0;
+  simpanJSON(LS.set, state.set);
+  if ($('#stLogin')) $('#stLogin').checked = !!state.set.login;
+  if ($('#stPelanggan')) $('#stPelanggan').checked = !!state.set.pelanggan;
+  terapkanMenuPelanggan();
+}
+/** Sembunyikan / tampilkan menu Pelanggan mengikuti pengaturan. */
+function terapkanMenuPelanggan() {
+  const tampil = state.set.pelanggan !== false;
+  $$('[data-view="pelanggan"]').forEach(b => b.classList.toggle('hidden', !tampil));
+  if (!tampil && state.view === 'pelanggan') nav('kasir');
+}
 function muatSet() {
   const s = bacaJSON(LS.set);
   if (s) state.set = Object.assign(state.set, s);
@@ -2661,8 +2942,12 @@ function applySet() {
   $('#stPajak').value = state.set.pajak;
   $('#stPoin').value = state.set.poin;
   $('#stLebar').value = String(state.set.lebar);
+  if ($('#stLogin')) $('#stLogin').checked = !!state.set.login;
+  if ($('#stPelanggan')) $('#stPelanggan').checked = !!state.set.pelanggan;
+  const b = $('#btnKeluar'); if (b) b.classList.toggle('hidden', !state.loginAktif);
+  terapkanMenuPelanggan();
 }
-$('#btnSimpanSet').addEventListener('click', () => {
+$('#btnSimpanSet').addEventListener('click', async () => {
   state.set = {
     toko: $('#stToko').value || 'Toko Saya',
     alamat: $('#stAlamat').value,
@@ -2670,12 +2955,29 @@ $('#btnSimpanSet').addEventListener('click', () => {
     footer: $('#stFooter').value || 'Terima kasih sudah berbelanja',
     pajak: nv($('#stPajak')),
     poin: nv($('#stPoin')) || 10000,
-    lebar: Number($('#stLebar').value) || 80
+    lebar: Number($('#stLebar').value) || 80,
+    login: $('#stLogin') ? $('#stLogin').checked : false,
+    pelanggan: $('#stPelanggan') ? $('#stPelanggan').checked : true
   };
   state.pajakPct = state.set.pajak;
   simpanJSON(LS.set, state.set);
   applySet(); renderKeranjang();
-  toast('Pengaturan disimpan ✓', 'ok');
+  // Simpan ke Spreadsheet agar bertahan walau link dibuka dari perangkat lain.
+  const set = {};
+  Object.keys(PETA_SET).forEach(k => {
+    set[k] = SET_BOOL.indexOf(k) >= 0 ? (state.set[PETA_SET[k]] ? 1 : 0) : state.set[PETA_SET[k]];
+  });
+  const btn = $('#btnSimpanSet');
+  const teksAwal = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Menyimpan…';
+  try {
+    await call('pengaturan.simpan', { set: set });
+    toast('Pengaturan disimpan ke Spreadsheet ✓', 'ok');
+  } catch (e) {
+    toast('Tersimpan lokal, gagal ke server: ' + e.message, 'err');
+  } finally {
+    btn.disabled = false; btn.textContent = teksAwal;
+  }
 });
 
 /* ================================================================
@@ -2708,10 +3010,44 @@ function jamTick() {
   renderKeranjang();
   updateStatusKoneksi();
 
-  // Ada sesi tersimpan (Admin/Kasir) → dipakai lagi; bila kedaluwarsa → kembali ke login.
+  // Tentukan fitur login dari Spreadsheet (publik, belum butuh sesi). Panggilan
+  // ini sekaligus menyiapkan database bila link baru pertama kali dibuka.
+  let publik = { loginAktif: null, pelangganAktif: null };
+  try { publik = await call('pengaturan.publik'); } catch (e) { /* pakai bawaan */ }
+  if (publik && publik.pelangganAktif !== null && publik.pelangganAktif !== undefined) {
+    state.set.pelanggan = !!publik.pelangganAktif;
+  }
+  state.loginAktif = (publik && publik.loginAktif !== null && publik.loginAktif !== undefined)
+    ? !!publik.loginAktif : LOGIN_BAWAAN;
+
+  // ---- Fitur login aktif: wajib masuk memakai akun terdaftar ----
+  if (state.loginAktif) {
+    const sesiL = bacaJSON(LS.sesi);
+    if (sesiL && sesiL.token && sesiL.user && sesiL.user.nama) {
+      state.token = sesiL.token; state.user = sesiL.user;
+      try {
+        await bootstrap();
+        bukaApp();
+        setTimeout(sinkronAntrean, 1200);
+        return;
+      } catch (e) {
+        const c = bacaJSON(LS.cache);
+        if (!navigator.onLine && c) {
+          isiDariCache(c); bukaApp();
+          toast('Mode offline — memakai data lokal', 'info');
+          return;
+        }
+        localStorage.removeItem(LS.sesi);
+        state.token = null; state.user = null;
+      }
+    }
+    tampilkanLogin('');
+    return;
+  }
+
+  // ---- Fitur login nonaktif: setiap pembuka link langsung mendapat sesi Admin ----
   const sesi = bacaJSON(LS.sesi);
-  let pesanLogin = '';
-  if (sesi && sesi.token && sesi.user && sesi.user.nama) {
+  if (sesi && sesi.token && sesi.user && sesi.user.peran === 'Admin') {
     state.token = sesi.token; state.user = sesi.user;
     try {
       await bootstrap();
@@ -2727,12 +3063,16 @@ function jamTick() {
       }
       localStorage.removeItem(LS.sesi);
       state.token = null; state.user = null;
-      pesanLogin = e.message || 'Sesi berakhir, silakan login ulang.';
     }
   }
-  // Belum login: siapkan database bila belum ada (buka pertama kali), lalu halaman login.
-  if (!pesanLogin) { try { await call('setup'); } catch (e) { /* database mungkin sudah siap */ } }
-  tampilkanLogin(pesanLogin);
+  try {
+    await dapatkanSesiAdmin();
+    await bootstrap();
+    bukaApp();
+    setTimeout(sinkronAntrean, 1200);
+  } catch (e) {
+    tampilkanBoot('Gagal memuat aplikasi: ' + e.message);
+  }
 })();
 </script>
 </body>
