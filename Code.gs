@@ -23,6 +23,8 @@ const APP = {
   /** Skema seluruh sheet (baris 1 = header). */
   SKEMA: {
     'Produk': ['ID_Produk', 'Kode_Barcode', 'Nama_Produk', 'Kategori', 'Harga_Beli', 'Harga_Jual', 'Stok', 'Satuan', 'Minimal_Stok', 'Status_Aktif', 'Jenis_Produk', 'Pemilik_Titipan'],
+    'Paket_Item': ['ID_Paket_Item', 'ID_Paket', 'ID_Komponen', 'Qty'],
+    'Pengaturan': ['Kunci', 'Nilai'],
     'Kategori': ['ID_Kategori', 'Nama_Kategori'],
     'Transaksi': ['No_Faktur', 'Tanggal_Waktu', 'Total_Belanja', 'Diskon_Global', 'Pajak', 'Total_Akhir', 'Jumlah_Bayar', 'Kembalian', 'Metode_Pembayaran', 'ID_Kasir', 'Catatan'],
     'Detail_Transaksi': ['ID_Detail', 'No_Faktur', 'ID_Produk', 'Nama_Produk', 'Harga_Satuan', 'Jumlah_Qty', 'Subtotal', 'Profit_Bersih'],
@@ -76,11 +78,13 @@ function api(action, payload) {
     if (action === 'login') return { ok: true, data: login_(payload) };
     if (action === 'auth.admin') return { ok: true, data: sesiAdmin_() };
     if (action === 'setup') return { ok: true, data: { pesan: setupSpreadsheet() } };
+    if (action === 'pengaturan.publik') return { ok: true, data: pengaturanPublik_() };
 
     const sesi = ambilSesi_(payload.token);
 
     switch (action) {
       case 'bootstrap':            return { ok: true, data: bootstrap_(sesi) };
+      case 'pengaturan.simpan':    wajibAdmin_(sesi); return { ok: true, data: simpanPengaturan_(payload.set) };
       case 'transaksi.simpan':     return { ok: true, data: simpanTransaksi_(payload) };
       case 'transaksi.sync':       return { ok: true, data: syncTransaksi_(payload) };
       case 'produk.simpan':        return { ok: true, data: simpanProduk_(payload.data, sesi) };
@@ -286,7 +290,7 @@ function statusAktifValidasi_(sh, head) {
 function jenisValidasi_(sh, head) {
   const c = head.indexOf('Jenis_Produk') + 1;
   if (!c) return;
-  const rule = SpreadsheetApp.newDataValidation().requireValueInList(['Normal', 'Titipan'], true).build();
+  const rule = SpreadsheetApp.newDataValidation().requireValueInList(['Normal', 'Titipan', 'Paket'], true).build();
   sh.getRange(2, c, 500, 1).setDataValidation(rule);
 }
 
@@ -442,6 +446,129 @@ function titipan_(p) {
   return String(p.Jenis_Produk || '') === 'Titipan' || !!String(p.Pemilik_Titipan || '').trim();
 }
 
+/** Produk paket (bundling): dijual sebagai satu item, tapi stok & HPP-nya
+ *  berasal dari komponen-komponen yang terdaftar di sheet Paket_Item. */
+function paket_(p) {
+  return String(p && p.Jenis_Produk || '') === 'Paket';
+}
+
+/** Daftar komponen sebuah paket: [{ID_Komponen, Qty}]. */
+function komponenPaket_(idPaket) {
+  return readSheet_('Paket_Item')
+    .filter(k => String(k.ID_Paket) === String(idPaket))
+    .map(k => ({ ID_Komponen: String(k.ID_Komponen), Qty: num_(k.Qty) || 1 }));
+}
+
+/** Peta ID_Paket -> [{ID_Komponen, Qty}] sekali baca (hemat untuk transaksi). */
+function petaKomponen_() {
+  const out = {};
+  readSheet_('Paket_Item').forEach(k => {
+    const id = String(k.ID_Paket || '');
+    if (!id) return;
+    if (!out[id]) out[id] = [];
+    out[id].push({ ID_Komponen: String(k.ID_Komponen), Qty: num_(k.Qty) || 1 });
+  });
+  return out;
+}
+
+/** Ganti seluruh komponen paket dengan daftar baru. */
+function simpanKomponenPaket_(idPaket, komponen) {
+  const sh = sh_('Paket_Item');
+  const head = head_('Paket_Item');
+  const cId = head.indexOf('ID_Paket') + 1;
+  // Hapus baris lama milik paket ini (dari bawah agar indeks aman)
+  const last = sh.getLastRow();
+  if (last >= 2 && cId > 0) {
+    const vals = sh.getRange(2, cId, last - 1, 1).getValues();
+    for (let i = vals.length - 1; i >= 0; i--) {
+      if (String(vals[i][0]) === String(idPaket)) sh.deleteRow(i + 2);
+    }
+  }
+  (komponen || []).forEach(k => {
+    appendRow_('Paket_Item', {
+      ID_Paket_Item: newId_('PKT'),
+      ID_Paket: String(idPaket),
+      ID_Komponen: String(k.ID_Komponen),
+      Qty: num_(k.Qty) || 1
+    });
+  });
+}
+
+/** HPP satu unit produk menurut komponennya (untuk paket & normal). */
+function hppEfektif_(p, petaProduk, petaKomponen) {
+  if (!paket_(p)) return num_(p.Harga_Beli);
+  const items = (petaKomponen && petaKomponen[String(p.ID_Produk)]) || komponenPaket_(p.ID_Produk);
+  let hpp = 0;
+  items.forEach(k => {
+    const c = petaProduk && petaProduk[String(k.ID_Komponen)];
+    if (c) hpp += num_(c.Harga_Beli) * num_(k.Qty);
+  });
+  return hpp;
+}
+
+/* ---------- Pengaturan aplikasi (Profil Toko, struk, on/off fitur) ----------
+ * Semua disimpan di sheet "Pengaturan" (key-value) sehingga bertahan
+ * walau link dibuka dari perangkat/browser lain. */
+
+const PENGATURAN_BAWAAN = {
+  set_toko: 'Toko Saya',
+  set_alamat: '',
+  set_hp: '',
+  set_footer: 'Terima kasih sudah berbelanja',
+  set_pajak: 0,
+  set_poin: 10000,
+  set_lebar: 80,
+  login_aktif: 1,
+  pelanggan_aktif: 1
+};
+
+function bacaPengaturan_() {
+  const out = {};
+  readSheet_('Pengaturan').forEach(r => {
+    const k = String(r.Kunci || '').trim();
+    if (k) out[k] = (r.Nilai === null || r.Nilai === undefined) ? '' : r.Nilai;
+  });
+  return out;
+}
+
+/** Hanya kunci publik yang dibutuhkan sebelum login ditentukan. */
+function pengaturanPublik_() {
+  const p = bacaPengaturan_();
+  return {
+    loginAktif: p.login_aktif === undefined || p.login_aktif === '' ? null : String(p.login_aktif) === '1',
+    pelangganAktif: p.pelanggan_aktif === undefined || p.pelanggan_aktif === '' ? null : String(p.pelanggan_aktif) === '1'
+  };
+}
+
+/** Simpan pengaturan (upsert key-value). Mengembalikan objek yang tersimpan. */
+function simpanPengaturan_(set) {
+  set = set || {};
+  const sh = sh_('Pengaturan');
+  const head = head_('Pengaturan');
+  const cKunci = head.indexOf('Kunci') + 1;
+  const cNilai = head.indexOf('Nilai') + 1;
+  if (!cKunci || !cNilai) throw new Error('Sheet Pengaturan tidak valid.');
+
+  const nilai = {};
+  const angka = ['set_pajak', 'set_poin', 'set_lebar'];
+  Object.keys(PENGATURAN_BAWAAN).forEach(k => {
+    if (set[k] === undefined || set[k] === null) return;
+    nilai[k] = angka.indexOf(k) >= 0 ? num_(set[k]) : String(set[k]);
+  });
+
+  const last = sh.getLastRow();
+  const kunciBaris = {};
+  if (last >= 2) {
+    const vals = sh.getRange(2, cKunci, last - 1, 1).getValues();
+    vals.forEach((r, i) => { const k = String(r[0] || '').trim(); if (k) kunciBaris[k] = i + 2; });
+  }
+  Object.keys(nilai).forEach(k => {
+    if (kunciBaris[k]) sh.getRange(kunciBaris[k], cNilai).setValue(nilai[k]);
+    else sh.appendRow([k, nilai[k]]);
+  });
+  return nilai;
+}
+
 /* ====================================================================
  * 5. BOOTSTRAP (data awal front-end setelah login)
  * ==================================================================== */
@@ -479,7 +606,10 @@ function pastikanKolom_(saja) {
       const jenis = cJenis > 0 ? String(row[cJenis - 1] || '') : '';
       const pemilik = cPemilik > 0 ? String(row[cPemilik - 1] || '').trim() : '';
       const titipan = jenis === 'Titipan' || !!pemilik;
-      if (titipan) {
+      if (jenis === 'Paket') {
+        if (num_(row[cStok - 1]) !== 0) sh.getRange(r, cStok).setValue(0);
+        if (cMin > 0 && num_(row[cMin - 1]) !== 0) sh.getRange(r, cMin).setValue(0);
+      } else if (titipan) {
         if (cJenis > 0 && jenis !== 'Titipan') sh.getRange(r, cJenis).setValue('Titipan');
         if (num_(row[cStok - 1]) !== 0) sh.getRange(r, cStok).setValue(0);
         if (cMin > 0 && num_(row[cMin - 1]) !== 0) sh.getRange(r, cMin).setValue(0);
@@ -493,11 +623,17 @@ function pastikanKolom_(saja) {
 function bootstrap_(sesi) {
   pastikanKolom_();
   const ss = getSS_();
+  const produk = readSheet_('Produk');
+  const petaKomponen = petaKomponen_();
+  produk.forEach(p => {
+    p.Komponen = petaKomponen[String(p.ID_Produk)] || [];
+  });
   const data = {
     serverTime: nowStr_(),
-    produk: readSheet_('Produk'),
+    produk: produk,
     kategori: readSheet_('Kategori'),
     pelanggan: readSheet_('Pelanggan'),
+    pengaturan: bacaPengaturan_(),
     spreadsheetUrl: ss.getUrl(),
     peran: sesi.peran
   };
@@ -515,44 +651,75 @@ function simpanProduk_(d, sesi) {
   const nama = String(d.Nama_Produk || '').trim();
   if (!nama) throw new Error('Nama produk wajib diisi.');
 
-  const jenis = d.Jenis_Produk === 'Titipan' ? 'Titipan' : 'Normal';
+  const jenis = d.Jenis_Produk === 'Titipan' ? 'Titipan' : (d.Jenis_Produk === 'Paket' ? 'Paket' : 'Normal');
   const pemilik = jenis === 'Titipan' ? String(d.Pemilik_Titipan || '').trim() : '';
   if (jenis === 'Titipan' && !pemilik) throw new Error('Nama penitip wajib diisi untuk produk titipan.');
+
+  const petaProduk = {};
+  readSheet_('Produk').forEach(p => { petaProduk[String(p.ID_Produk)] = p; });
+
+  // Rakit komponen paket + hitung HPP paket dari HPP tiap komponen.
+  let komponen = [];
+  let hppPaket = 0;
+  if (jenis === 'Paket') {
+    const lihat = {};
+    (Array.isArray(d.Komponen) ? d.Komponen : []).forEach(k => {
+      const idK = String((k && (k.ID_Komponen || k.id)) || '').trim();
+      const q = num_(k && (k.Qty !== undefined ? k.Qty : k.qty));
+      if (!idK || q <= 0) return;
+      const c = petaProduk[idK];
+      if (!c) throw new Error('Komponen paket tidak ditemukan.');
+      if (paket_(c)) throw new Error('Paket tidak boleh berisi paket lain.');
+      if (lihat[idK] !== undefined) { komponen[lihat[idK]].Qty += q; return; }
+      lihat[idK] = komponen.length;
+      komponen.push({ ID_Komponen: idK, Qty: q });
+    });
+    if (!komponen.length) throw new Error('Paket harus punya minimal 1 komponen.');
+    komponen.forEach(k => { hppPaket += num_(petaProduk[k.ID_Komponen].Harga_Beli) * k.Qty; });
+  }
 
   const data = {
     Kode_Barcode: String(d.Kode_Barcode || '').trim(),
     Nama_Produk: nama,
     Kategori: String(d.Kategori || '').trim(),
-    Harga_Beli: num_(d.Harga_Beli),
+    Harga_Beli: jenis === 'Paket' ? hppPaket : num_(d.Harga_Beli),
     Harga_Jual: num_(d.Harga_Jual),
-    Stok: jenis === 'Titipan' ? 0 : num_(d.Stok),
+    Stok: (jenis === 'Titipan' || jenis === 'Paket') ? 0 : num_(d.Stok),
     Satuan: String(d.Satuan || 'pcs').trim(),
-    Minimal_Stok: jenis === 'Titipan' ? 0 : num_(d.Minimal_Stok),
+    Minimal_Stok: (jenis === 'Titipan' || jenis === 'Paket') ? 0 : num_(d.Minimal_Stok),
     Status_Aktif: d.Status_Aktif === 'Nonaktif' ? 'Nonaktif' : 'Aktif',
     Jenis_Produk: jenis,
     Pemilik_Titipan: pemilik
   };
 
+  let hasil;
   if (d.ID_Produk) {
     updateRow_('Produk', 'ID_Produk', d.ID_Produk, data);
-    return Object.assign({ ID_Produk: String(d.ID_Produk) }, data);
+    hasil = Object.assign({ ID_Produk: String(d.ID_Produk) }, data);
+  } else {
+    if (data.Kode_Barcode && findRow_('Produk', 'Kode_Barcode', data.Kode_Barcode) > 0) {
+      throw new Error('Barcode "' + data.Kode_Barcode + '" sudah dipakai produk lain.');
+    }
+    hasil = Object.assign({ ID_Produk: newId_('PRD') }, data);
+    appendRow_('Produk', hasil);
   }
 
-  if (data.Kode_Barcode && findRow_('Produk', 'Kode_Barcode', data.Kode_Barcode) > 0) {
-    throw new Error('Barcode "' + data.Kode_Barcode + '" sudah dipakai produk lain.');
-  }
-  const baru = Object.assign({ ID_Produk: newId_('PRD') }, data);
-  appendRow_('Produk', baru);
+  // Sinkronkan komponen paket (kosongkan bila produk bukan paket lagi).
+  simpanKomponenPaket_(hasil.ID_Produk, jenis === 'Paket' ? komponen : []);
 
   // Pastikan kategori ikut terdaftar
   if (data.Kategori && !readSheet_('Kategori').some(k => String(k.Nama_Kategori).toLowerCase() === data.Kategori.toLowerCase())) {
     appendRow_('Kategori', { ID_Kategori: newId_('KTG'), Nama_Kategori: data.Kategori });
   }
-  return baru;
+
+  hasil.Komponen = komponen;
+  return hasil;
 }
 
 function hapusProduk_(id) {
   deleteRow_('Produk', 'ID_Produk', id);
+  // Bersihkan komponen bila yang dihapus adalah sebuah paket.
+  simpanKomponenPaket_(id, []);
   return { id: id };
 }
 
@@ -574,6 +741,9 @@ function restokProduk_(payload) {
   const cPemilik = head.indexOf('Pemilik_Titipan') + 1;
   const jenis = cJenis > 0 ? String(s.getRange(r, cJenis).getValue() || '') : '';
   const pemilik = cPemilik > 0 ? String(s.getRange(r, cPemilik).getValue() || '').trim() : '';
+  if (jenis === 'Paket') {
+    throw new Error('Produk paket tidak mengelola stok — stok diambil dari komponennya.');
+  }
   if (jenis === 'Titipan' || pemilik) {
     throw new Error('Produk titipan tidak mengelola stok opname.');
   }
@@ -717,6 +887,7 @@ function simpanTransaksi_(payload) {
   // Peta produk (untuk HPP & stok)
   const peta = {};
   readSheet_('Produk').forEach(p => { peta[String(p.ID_Produk)] = p; });
+  const petaKomponen = petaKomponen_();
 
   let totalBelanja = 0;
   const detailRows = [];
@@ -732,16 +903,28 @@ function simpanTransaksi_(payload) {
     if (qty <= 0) return;
 
     const sub = harga * qty - disc;
-    const hpp = num_(p.Harga_Beli);
+
+    // Paket dijual sebagai satu baris, tetapi HPP & stok mengikuti komponen.
+    const komponen = paket_(p)
+      ? (petaKomponen[String(p.ID_Produk)] || []).map(k => ({ ID_Komponen: k.ID_Komponen, Qty: num_(k.Qty) || 1 }))
+      : [{ ID_Komponen: String(p.ID_Produk), Qty: 1 }];
+    let hpp = 0;
+    komponen.forEach(k => {
+      const c = peta[String(k.ID_Komponen)];
+      if (c) hpp += num_(c.Harga_Beli) * num_(k.Qty);
+    });
     const profit = (harga - hpp) * qty - disc;
-    const titipan = titipan_(p);
 
     totalBelanja += sub;
     detailRows.push([newId_('DT'), noFaktur, p.ID_Produk, p.Nama_Produk, harga, qty, sub, profit]);
-    if (!titipan) {
-      qtyPerProduk[String(p.ID_Produk)] = (qtyPerProduk[String(p.ID_Produk)] || 0) + qty;
-      if (num_(p.Stok) < qty) kurangStok.push(String(p.Nama_Produk));
-    }
+
+    komponen.forEach(k => {
+      const c = peta[String(k.ID_Komponen)];
+      if (!c || titipan_(c) || paket_(c)) return;
+      const pakai = num_(k.Qty) * qty;
+      qtyPerProduk[String(k.ID_Komponen)] = (qtyPerProduk[String(k.ID_Komponen)] || 0) + pakai;
+      if (num_(c.Stok) < pakai) kurangStok.push(String(c.Nama_Produk));
+    });
   });
 
   if (!detailRows.length) throw new Error('Tidak ada item valid pada keranjang.');
@@ -988,7 +1171,7 @@ function laporan_(payload) {
   const petaJenis = {};
   produk.forEach(p => {
     petaJenis[String(p.ID_Produk)] = {
-      jenis: titipan_(p) ? 'Titipan' : 'Normal',
+      jenis: paket_(p) ? 'Paket' : (titipan_(p) ? 'Titipan' : 'Normal'),
       pemilik: String(p.Pemilik_Titipan || ''),
       nama: String(p.Nama_Produk || '')
     };
@@ -1064,7 +1247,7 @@ function laporan_(payload) {
   // bukan milik toko, tidak boleh menambah/menurunkan nilai aset
   // walaupun kolom Stok terisi angka (mis. salah input manual di sheet).
   const stokProduk = produk
-    .filter(p => !titipan_(p))
+    .filter(p => !titipan_(p) && !paket_(p))
     .map(p => ({
       kode: String(p.Kode_Barcode || ''), nama: String(p.Nama_Produk || ''),
       kategori: String(p.Kategori || ''), stok: num_(p.Stok), min: num_(p.Minimal_Stok),
