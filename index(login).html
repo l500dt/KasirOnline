@@ -26,6 +26,8 @@ if (window.tailwind) {
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 
 <style>
   :root { --struk-w: 80mm; }
@@ -766,6 +768,7 @@ if (window.tailwind) {
           <button id="btnMuatLaporan" class="bg-brand-600 hover:bg-brand-700 text-white font-bold rounded-xl px-4 py-2 text-sm">Tampilkan</button>
           <div class="ml-auto flex gap-2">
             <button id="btnExportXlsx" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl px-3 py-2 text-xs">⬇ Excel</button>
+            <button id="btnExportPdf" class="bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl px-3 py-2 text-xs">⬇ PDF</button>
             <button id="btnCetakLaporan" class="bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl px-3 py-2 text-xs">🖨 Cetak / PDF</button>
           </div>
         </div>
@@ -2762,14 +2765,15 @@ function renderTabelLaporan(L) {
     '<td class="px-4 py-2 text-right text-xs font-semibold tabular-nums">' + rp(p.nilai) + '</td></tr>').join('');
 }
 
-function renderRugiLaba(L) {
+/** Baris laporan rugi-laba (dipakai tampilan layar & unduhan PDF). */
+function dataRugiLaba(L) {
   const r = L.ringkasan;
   const baris = [
-    ['Penjualan kotor (setelah diskon item)', rp(r.totalBelanja), 'text-slate-600'],
-    ['Diskon transaksi global', '-' + rp(r.diskon), 'text-rose-600'],
-    ['Pajak terkumpul (PPN)', rp(r.pajak), 'text-slate-600 text-xs italic'],
-    ['Omzet (dibayar pelanggan)', rp(r.omzet), 'font-bold text-brand-700'],
-    ['HPP / modal barang terjual', '-' + rp(r.hpp), 'text-rose-600']
+    { label: 'Penjualan kotor (setelah diskon item)', nilai: rp(r.totalBelanja), kelas: 'text-slate-600' },
+    { label: 'Diskon transaksi global', nilai: '-' + rp(r.diskon), kelas: 'text-rose-600' },
+    { label: 'Pajak terkumpul (PPN)', nilai: rp(r.pajak), kelas: 'text-slate-600 text-xs italic' },
+    { label: 'Omzet (dibayar pelanggan)', nilai: rp(r.omzet), kelas: 'font-bold text-brand-700' },
+    { label: 'HPP / modal barang terjual', nilai: '-' + rp(r.hpp), kelas: 'text-rose-600' }
   ];
   // Rincian HPP per penitipan — uang yang harus diserahkan ke pemilik titipan
   // (hanya penitip yang memiliki HPP periode ini; penitip tanpa penjualan
@@ -2777,25 +2781,27 @@ function renderRugiLaba(L) {
   const titipan = (L.titipan || []).filter(x => (Number(x.hpp) || 0) > 0);
   if (titipan.length) {
     const hppTitipan = titipan.reduce((s, x) => s + (Number(x.hpp) || 0), 0);
-    baris.push(['   · HPP produk normal (sendiri)', '-' + rp(Math.max(0, r.hpp - hppTitipan)),
-      'text-slate-500 text-xs italic']);
-    titipan.forEach(x => {
-      baris.push(['   · Titipan ' + esc(x.pemilik || 'Tanpa nama') + ' — diserahkan saat tutup', '-' + rp(x.hpp),
-        'text-indigo-600 text-xs font-semibold']);
-    });
+    baris.push({ label: '   · HPP produk normal (sendiri)', nilai: '-' + rp(Math.max(0, r.hpp - hppTitipan)),
+      kelas: 'text-slate-500 text-xs italic' });
+    titipan.forEach(x => baris.push({
+      label: '   · Titipan ' + (x.pemilik || 'Tanpa nama') + ' — diserahkan saat tutup', nilai: '-' + rp(x.hpp),
+      kelas: 'text-indigo-600 text-xs font-semibold'
+    }));
   }
   baris.push(
-    ['Laba kotor', rp(r.labaKotor), 'font-bold text-emerald-600'],
-    ['Pengeluaran operasional', '-' + rp(r.pengeluaran), 'text-rose-600']
+    { label: 'Laba kotor', nilai: rp(r.labaKotor), kelas: 'font-bold text-emerald-600' },
+    { label: 'Pengeluaran operasional', nilai: '-' + rp(r.pengeluaran), kelas: 'text-rose-600' }
   );
-  const detail = L.pengeluaranKategori.map(x =>
-    ['   · ' + x.kategori, '-' + rp(x.nominal), 'text-slate-500 text-xs italic']);
-  const akhir = [['LABA BERSIH PERIODE INI', rp(r.labaBersih),
-    'font-extrabold text-base ' + (r.labaBersih >= 0 ? 'text-emerald-700 bg-emerald-50' : 'text-rose-700 bg-rose-50')]];
-  const semua = baris.concat(detail, akhir);
-  $('#tblRugiLaba').innerHTML = semua.map(b =>
-    '<tr><td class="px-4 py-2 text-sm ' + b[2] + '">' + b[0] + '</td>' +
-    '<td class="px-4 py-2 text-right text-sm tabular-nums ' + b[2] + '">' + b[1] + '</td></tr>').join('');
+  (L.pengeluaranKategori || []).forEach(x => baris.push(
+    { label: '   · ' + x.kategori, nilai: '-' + rp(x.nominal), kelas: 'text-slate-500 text-xs italic' }));
+  baris.push({ label: 'LABA BERSIH PERIODE INI', nilai: rp(r.labaBersih),
+    kelas: 'font-extrabold text-base ' + (r.labaBersih >= 0 ? 'text-emerald-700 bg-emerald-50' : 'text-rose-700 bg-rose-50') });
+  return baris;
+}
+function renderRugiLaba(L) {
+  $('#tblRugiLaba').innerHTML = dataRugiLaba(L).map(b =>
+    '<tr><td class="px-4 py-2 text-sm ' + b.kelas + '">' + esc(b.label) + '</td>' +
+    '<td class="px-4 py-2 text-right text-sm tabular-nums ' + b.kelas + '">' + b.nilai + '</td></tr>').join('');
 }
 
 $('#btnCetakLaporan').addEventListener('click', () => {
@@ -2868,6 +2874,390 @@ $('#btnExportXlsx').addEventListener('click', () => {
   XLSX.writeFile(wb, 'Laporan_Kasir_' + L.mulai + '_' + L.akhir + '.xlsx');
   toast('File Excel diunduh ✓', 'ok');
 });
+
+/* ================================================================
+ * 11b. UNDUH LAPORAN PDF (A4 — antar-bagian tidak terbelah)
+ * ----------------------------------------------------------------
+ * Memakai jsPDF + AutoTable. Setiap bagian (ringkasan, grafik, dan
+ * tiap tabel) diukur lebih dulu; bila sisa ruang di halaman aktif
+ * tidak cukup, seluruh bagian dipindah ke halaman baru supaya tidak
+ * ada bagian yang terpotong separuh antar halaman.
+ * ================================================================ */
+const PDF_LAP = { w: 210, h: 297, kiri: 12, kanan: 12, atas: 12, bawah: 14, judul: 9, jarak: 5 };
+PDF_LAP.lebar = PDF_LAP.w - PDF_LAP.kiri - PDF_LAP.kanan;  // 186 mm — lebar area isi
+PDF_LAP.batas = PDF_LAP.h - PDF_LAP.bawah;                 // 283 mm — batas bawah area isi
+const PDF_WARNA = {
+  brand: [79, 70, 229], emerald: [5, 150, 105], rose: [225, 29, 72],
+  slate: [51, 65, 85], abu: [100, 116, 139], muda: [248, 250, 252],
+  garis: [226, 232, 240], hijauMuda: [236, 253, 245], roseMuda: [255, 241, 242]
+};
+
+/** finalY autoTable — versi plugin menaruhnya di tempat berbeda. */
+function pdfAkhirY(doc) {
+  if (doc.lastAutoTable && typeof doc.lastAutoTable.finalY === 'number') return doc.lastAutoTable.finalY;
+  if (doc.autoTable && doc.autoTable.previous && typeof doc.autoTable.previous.finalY === 'number') return doc.autoTable.previous.finalY;
+  return null;
+}
+/** Tinggi satu tabel pada halaman kosong; Infinity bila lebih dari satu halaman. */
+function pdfUkurTabel(cfg) {
+  const tmp = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4' });
+  tmp.autoTable(Object.assign({}, cfg, { startY: PDF_LAP.atas }));
+  const akhir = pdfAkhirY(tmp);
+  if (tmp.internal.getNumberOfPages() > 1 || akhir === null) return Infinity;
+  return Math.max(0, akhir - PDF_LAP.atas);
+}
+/** Pindah halaman bila seluruh bagian tidak muat di sisa ruang halaman aktif. */
+function pdfRuang(doc, y, tinggi) {
+  if (isFinite(tinggi)) {
+    if (y + tinggi <= PDF_LAP.batas) return y;
+    if (tinggi <= PDF_LAP.batas - PDF_LAP.atas) { doc.addPage(); return PDF_LAP.atas; }
+  }
+  // Bagian memang lebih tinggi dari satu halaman — terpaksa mengalir; minimal
+  // jangan dimulai di sisa ruang yang terlalu mepet.
+  if (y > PDF_LAP.atas && PDF_LAP.batas - y < 55) { doc.addPage(); return PDF_LAP.atas; }
+  return y;
+}
+/** Judul bagian: aksen + garis pemisah. */
+function pdfJudulBagian(doc, teks, y) {
+  doc.setFillColor(PDF_WARNA.brand[0], PDF_WARNA.brand[1], PDF_WARNA.brand[2]);
+  doc.rect(PDF_LAP.kiri, y + 0.4, 1.5, 4.4, 'F');
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(30, 41, 59);
+  doc.text(teks, PDF_LAP.kiri + 4, y + 4.4);
+  doc.setDrawColor(PDF_WARNA.garis[0], PDF_WARNA.garis[1], PDF_WARNA.garis[2]); doc.setLineWidth(0.3);
+  doc.line(PDF_LAP.kiri, y + 7, PDF_LAP.kiri + PDF_LAP.lebar, y + 7);
+  return y + PDF_LAP.judul;
+}
+/** Konfigurasi dasar tabel PDF. */
+function pdfCfgTabel(head, body, opsi) {
+  return Object.assign({
+    theme: 'grid',
+    head: [head],
+    body: body,
+    margin: { top: PDF_LAP.atas, left: PDF_LAP.kiri, right: PDF_LAP.kanan, bottom: PDF_LAP.bawah },
+    styles: {
+      font: 'helvetica', fontSize: 8, textColor: PDF_WARNA.slate,
+      cellPadding: { top: 1.5, right: 1.8, bottom: 1.5, left: 1.8 },
+      lineColor: PDF_WARNA.garis, lineWidth: 0.15, overflow: 'linebreak', valign: 'middle'
+    },
+    headStyles: { fillColor: PDF_WARNA.brand, textColor: 255, fontStyle: 'bold', fontSize: 8, halign: 'left' },
+    alternateRowStyles: { fillColor: PDF_WARNA.muda },
+    footStyles: { fillColor: [241, 245, 249], textColor: [30, 41, 59], fontStyle: 'bold', fontSize: 8 }
+  }, opsi || {});
+}
+/** Satu baris "tidak ada data" untuk tabel kosong. */
+function pdfBarisKosong(pesan, kolom) {
+  return [{ content: pesan, colSpan: kolom, styles: { halign: 'center', fontStyle: 'italic', textColor: [148, 163, 184] } }];
+}
+/** Gambar satu tabel lengkap (judul + catatan + isi) dengan penjagaan halaman. */
+function pdfTabel(doc, y, judul, cfg, catatan) {
+  const tinggiIsi = pdfUkurTabel(cfg);
+  const total = (judul ? PDF_LAP.judul : 0) + (catatan ? 5.5 : 0) + tinggiIsi;
+  y = pdfRuang(doc, y, isFinite(total) ? total + PDF_LAP.jarak : Infinity);
+  if (judul) y = pdfJudulBagian(doc, judul, y);
+  if (catatan) {
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5);
+    doc.setTextColor(PDF_WARNA.abu[0], PDF_WARNA.abu[1], PDF_WARNA.abu[2]);
+    doc.text(catatan, PDF_LAP.kiri, y + 2.4);
+    y += 5.5;
+  }
+  doc.autoTable(Object.assign({}, cfg, { startY: y }));
+  const akhir = pdfAkhirY(doc);
+  return (akhir === null ? y : akhir) + PDF_LAP.jarak;
+}
+/** Gaya PDF untuk baris rugi-laba (kelas berasal dari dataRugiLaba). */
+function pdfGayaRugiLaba(kelas) {
+  if (kelas.indexOf('font-extrabold') >= 0) {
+    return kelas.indexOf('emerald') >= 0
+      ? { fontStyle: 'bold', fontSize: 9, textColor: [4, 120, 87], fillColor: PDF_WARNA.hijauMuda }
+      : { fontStyle: 'bold', fontSize: 9, textColor: [190, 18, 60], fillColor: PDF_WARNA.roseMuda };
+  }
+  if (kelas.indexOf('text-indigo') >= 0) return { textColor: PDF_WARNA.brand };
+  if (kelas.indexOf('text-brand') >= 0) return { fontStyle: 'bold', textColor: [67, 56, 202] };
+  if (kelas.indexOf('text-rose') >= 0) return { textColor: PDF_WARNA.rose };
+  if (kelas.indexOf('emerald') >= 0) return { fontStyle: 'bold', textColor: PDF_WARNA.emerald };
+  if (kelas.indexOf('italic') >= 0) return { textColor: PDF_WARNA.abu, fontStyle: 'italic', fontSize: 7.5 };
+  return { textColor: PDF_WARNA.slate };
+}
+/** Kop laporan pada halaman pertama. */
+function pdfKop(doc, L) {
+  const x = PDF_LAP.kiri;
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(15); doc.setTextColor(15, 23, 42);
+  doc.text(state.set.toko || 'Toko Saya', x, PDF_LAP.atas + 4.5);
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(7.2);
+  doc.setTextColor(PDF_WARNA.abu[0], PDF_WARNA.abu[1], PDF_WARNA.abu[2]);
+  doc.text('Dibuat ' + sekarangStr(), x + PDF_LAP.lebar, PDF_LAP.atas + 2.5, { align: 'right' });
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(10);
+  doc.setTextColor(PDF_WARNA.brand[0], PDF_WARNA.brand[1], PDF_WARNA.brand[2]);
+  doc.text('LAPORAN PENJUALAN & LABA', x, PDF_LAP.atas + 11.5);
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5);
+  doc.setTextColor(PDF_WARNA.slate[0], PDF_WARNA.slate[1], PDF_WARNA.slate[2]);
+  doc.text('Periode ' + tglIndo(L.mulai) + ' — ' + tglIndo(L.akhir) + '  •  hari bisnis berganti pukul 04.00', x, PDF_LAP.atas + 16.5);
+  doc.setDrawColor(PDF_WARNA.brand[0], PDF_WARNA.brand[1], PDF_WARNA.brand[2]); doc.setLineWidth(0.6);
+  doc.line(x, PDF_LAP.atas + 19.5, x + PDF_LAP.lebar, PDF_LAP.atas + 19.5);
+  return PDF_LAP.atas + 24;
+}
+/** Enam kartu ringkasan. */
+function pdfRingkasan(doc, y, r) {
+  const kartu = [
+    { label: 'Omzet', nilai: rp(r.omzet), warna: PDF_WARNA.brand },
+    { label: 'Transaksi', nilai: String(r.jumlahTrx), sub: (Number(r.qtyTerjual) || 0).toLocaleString('id-ID') + ' unit terjual', warna: PDF_WARNA.slate },
+    { label: 'Rata-rata / Trx', nilai: rp(r.rata2), warna: PDF_WARNA.slate },
+    { label: 'Laba Kotor', nilai: rp(r.labaKotor), sub: 'HPP ' + rp(r.hpp), warna: PDF_WARNA.emerald },
+    { label: 'Pengeluaran', nilai: rp(r.pengeluaran), warna: PDF_WARNA.rose },
+    { label: 'Laba Bersih', nilai: rp(r.labaBersih), warna: r.labaBersih >= 0 ? PDF_WARNA.emerald : PDF_WARNA.rose }
+  ];
+  const kol = 3, gap = 4, cw = (PDF_LAP.lebar - gap * (kol - 1)) / kol, ch = 15;
+  y = pdfRuang(doc, y, PDF_LAP.judul + 2 * ch + gap + PDF_LAP.jarak);
+  y = pdfJudulBagian(doc, 'Ringkasan', y);
+  kartu.forEach((k, i) => {
+    const cx = PDF_LAP.kiri + (i % kol) * (cw + gap);
+    const cy = y + Math.floor(i / kol) * (ch + gap);
+    doc.setFillColor(PDF_WARNA.muda[0], PDF_WARNA.muda[1], PDF_WARNA.muda[2]);
+    doc.setDrawColor(PDF_WARNA.garis[0], PDF_WARNA.garis[1], PDF_WARNA.garis[2]); doc.setLineWidth(0.2);
+    doc.roundedRect(cx, cy, cw, ch, 1.8, 1.8, 'FD');
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(6.6);
+    doc.setTextColor(PDF_WARNA.abu[0], PDF_WARNA.abu[1], PDF_WARNA.abu[2]);
+    doc.text(String(k.label).toUpperCase(), cx + 2.6, cy + 4.4);
+    doc.setFontSize(11);
+    doc.setTextColor(k.warna[0], k.warna[1], k.warna[2]);
+    doc.text(String(k.nilai), cx + 2.6, cy + 9.8);
+    if (k.sub) {
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(6.6);
+      doc.setTextColor(120, 130, 145);
+      doc.text(String(k.sub), cx + 2.6, cy + 13.5);
+    }
+  });
+  return y + 2 * ch + gap + PDF_LAP.jarak;
+}
+/** Ambil canvas grafik Chart.js sebagai gambar PNG. */
+function pdfAmbilCanvas(id, inst) {
+  try {
+    const c = document.getElementById(id);
+    if (!c || !inst || !c.width || !c.height) return null;
+    return { url: c.toDataURL('image/png'), rasio: c.height / c.width };
+  } catch (e) { return null; }
+}
+/** Bagian grafik: tren omzet & metode bayar. */
+function pdfGrafik(doc, y) {
+  const g1 = pdfAmbilCanvas('chartHarian', window._chartHarian);
+  const g2 = pdfAmbilCanvas('chartMetode', window._chartMetode);
+  if (!g1 && !g2) return y;
+  const gap = 4;
+  const gambar = [];
+  let tinggi;
+  if (g1 && g2) {
+    const w1 = Math.round((PDF_LAP.lebar - gap) * 0.62);
+    const w2 = PDF_LAP.lebar - gap - w1;
+    const h1 = w1 * g1.rasio, h2 = w2 * g2.rasio;
+    tinggi = Math.max(h1, h2);
+    gambar.push({ url: g1.url, x: PDF_LAP.kiri, w: w1, h: h1 });
+    gambar.push({ url: g2.url, x: PDF_LAP.kiri + w1 + gap, w: w2, h: h2 });
+  } else {
+    const g = g1 || g2;
+    const w = PDF_LAP.lebar;
+    const h = Math.min(95, w * g.rasio);
+    tinggi = h;
+    gambar.push({ url: g.url, x: PDF_LAP.kiri, w: w, h: h });
+  }
+  y = pdfRuang(doc, y, PDF_LAP.judul + tinggi + PDF_LAP.jarak + 2);
+  y = pdfJudulBagian(doc, 'Tren Omzet & Laba', y);
+  gambar.forEach(g => {
+    const oy = y + (tinggi - g.h) / 2;   // ratakan tengah bila tinggi berbeda
+    doc.addImage(g.url, 'PNG', g.x, oy, g.w, g.h, undefined, 'FAST');
+    doc.setDrawColor(PDF_WARNA.garis[0], PDF_WARNA.garis[1], PDF_WARNA.garis[2]); doc.setLineWidth(0.2);
+    doc.rect(g.x, oy, g.w, g.h);
+  });
+  return y + tinggi + PDF_LAP.jarak + 2;
+}
+/** Kaki halaman: garis, identitas laporan, nomor halaman. */
+function pdfKaki(doc, L) {
+  const jumlah = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= jumlah; i++) {
+    doc.setPage(i);
+    doc.setDrawColor(PDF_WARNA.garis[0], PDF_WARNA.garis[1], PDF_WARNA.garis[2]); doc.setLineWidth(0.25);
+    doc.line(PDF_LAP.kiri, PDF_LAP.h - 12, PDF_LAP.kiri + PDF_LAP.lebar, PDF_LAP.h - 12);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(7.2); doc.setTextColor(120, 130, 145);
+    doc.text('Laporan Kasir — ' + (state.set.toko || 'Toko Saya') + '  •  ' + L.mulai + ' s/d ' + L.akhir, PDF_LAP.kiri, PDF_LAP.h - 7.6);
+    doc.text('Halaman ' + i + ' dari ' + jumlah, PDF_LAP.kiri + PDF_LAP.lebar, PDF_LAP.h - 7.6, { align: 'right' });
+  }
+}
+/** Susun seluruh bagian laporan lalu unduh sebagai PDF A4. */
+function unduhLaporanPdf() {
+  const L = state.laporan;
+  if (!L) { toast('Muat laporan terlebih dahulu', 'err'); return; }
+  const ns = window.jspdf;
+  if (!ns || !ns.jsPDF) { toast('Library PDF belum termuat — muat ulang halaman lalu coba lagi', 'err'); return; }
+  const btn = $('#btnExportPdf'), teksAwal = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Menyiapkan…';
+  try {
+    const doc = new ns.jsPDF({ unit: 'mm', format: 'a4' });
+    if (!doc.autoTable) throw new Error('plugin tabel PDF belum termuat');
+    const r = L.ringkasan;
+    let y = pdfKop(doc, L);
+    y = pdfRingkasan(doc, y, r);
+    y = pdfGrafik(doc, y);
+
+    // --- Produk Terlaris ---
+    const totQty = L.topProduk.reduce((s, p) => s + (Number(p.qty) || 0), 0);
+    const totOmzet = L.topProduk.reduce((s, p) => s + (Number(p.omzet) || 0), 0);
+    const totProfit = L.topProduk.reduce((s, p) => s + (Number(p.profit) || 0), 0);
+    const cfgTop = pdfCfgTabel(
+      ['#', 'Produk', 'Qty', 'Omzet', 'Profit'],
+      L.topProduk.length
+        ? L.topProduk.map((p, i) => [String(i + 1), p.nama, String(p.qty), rp(p.omzet), rp(p.profit)])
+        : pdfBarisKosong('Belum ada penjualan pada periode ini.', 5),
+      {
+        columnStyles: {
+          0: { cellWidth: 9, halign: 'center', textColor: [148, 163, 184] },
+          1: { cellWidth: 'auto' },
+          2: { cellWidth: 15, halign: 'right' },
+          3: { cellWidth: 30, halign: 'right' },
+          4: { cellWidth: 30, halign: 'right', textColor: PDF_WARNA.emerald, fontStyle: 'bold' }
+        },
+        foot: L.topProduk.length
+          ? [[{ content: 'Total', colSpan: 2, styles: { halign: 'right' } }, String(totQty), rp(totOmzet), rp(totProfit)]]
+          : undefined
+      });
+    y = pdfTabel(doc, y, 'Produk Terlaris', cfgTop);
+
+    // --- Rincian Pembayaran ---
+    const totalMetode = L.metode.reduce((s, m) => s + (Number(m.total) || 0), 0);
+    const cfgMetode = pdfCfgTabel(
+      ['Metode', 'Jumlah Trx', 'Nominal', '%'],
+      L.metode.length
+        ? L.metode.map(m => [m.metode, String(m.jumlah) + ' trx', rp(m.total),
+            (totalMetode ? Math.round((Number(m.total) || 0) / totalMetode * 100) : 0) + '%'])
+        : pdfBarisKosong('Belum ada data pembayaran.', 4),
+      {
+        columnStyles: {
+          0: { cellWidth: 'auto', fontStyle: 'bold' },
+          1: { cellWidth: 28, halign: 'right' },
+          2: { cellWidth: 42, halign: 'right', fontStyle: 'bold' },
+          3: { cellWidth: 20, halign: 'right', textColor: [148, 163, 184] }
+        },
+        foot: L.metode.length
+          ? [[{ content: 'Total', colSpan: 2, styles: { halign: 'right' } }, rp(totalMetode), '100%']]
+          : undefined
+      });
+    y = pdfTabel(doc, y, 'Rincian Pembayaran', cfgMetode);
+
+    // --- Produk Titipan (hanya bila ada) ---
+    const titipan = L.titipan || [];
+    if (titipan.length) {
+      const totUnitTit = titipan.reduce((s, x) => s + (Number(x.unit) || 0), 0);
+      const totOmzetTit = titipan.reduce((s, x) => s + (Number(x.omzet) || 0), 0);
+      const totHppTit = titipan.reduce((s, x) => s + (Number(x.hpp) || 0), 0);
+      const totUntungTit = titipan.reduce((s, x) => s + (Number(x.untung) || 0), 0);
+      const cfgTit = pdfCfgTabel(
+        ['Penitip', 'Produk', 'Unit', 'Omzet', 'HPP (ke penitip)', 'Keuntungan'],
+        titipan.map(x => [
+          x.pemilik || 'Tanpa nama',
+          (x.produk || []).map(pr => pr.nama + (pr.unit ? ' ×' + pr.unit : '')).join(', '),
+          String(x.unit), rp(x.omzet), rp(x.hpp), rp(x.untung)
+        ]),
+        {
+          columnStyles: {
+            0: { cellWidth: 30, fontStyle: 'bold' },
+            1: { cellWidth: 'auto', fontSize: 7.5, textColor: PDF_WARNA.abu },
+            2: { cellWidth: 13, halign: 'right' },
+            3: { cellWidth: 25, halign: 'right' },
+            4: { cellWidth: 27, halign: 'right', textColor: PDF_WARNA.rose },
+            5: { cellWidth: 27, halign: 'right', textColor: PDF_WARNA.emerald, fontStyle: 'bold' }
+          },
+          foot: [[{ content: 'Total', colSpan: 2, styles: { halign: 'right' } },
+            String(totUnitTit), rp(totOmzetTit), rp(totHppTit), rp(totUntungTit)]]
+        });
+      y = pdfTabel(doc, y, 'Laporan Produk Titipan', cfgTit,
+        'Total HPP yang diserahkan ke penitip: ' + rp(totHppTit));
+    }
+
+    // --- Rugi-Laba ---
+    const cfgRL = pdfCfgTabel(
+      ['Keterangan', 'Nilai'],
+      dataRugiLaba(L).map(b => {
+        const gaya = pdfGayaRugiLaba(b.kelas);
+        return [{ content: String(b.label).trim(), styles: gaya },
+                { content: b.nilai, styles: Object.assign({ halign: 'right' }, gaya) }];
+      }),
+      {
+        columnStyles: { 0: { cellWidth: 126 }, 1: { cellWidth: 60, halign: 'right' } },
+        headStyles: { fillColor: [30, 41, 59], textColor: 255, fontStyle: 'bold', fontSize: 8 }
+      });
+    y = pdfTabel(doc, y, 'Laporan Rugi-Laba', cfgRL);
+
+    // --- Pengeluaran Operasional ---
+    const totalPeng = L.pengeluaran.reduce((s, p) => s + (Number(p.Nominal) || 0), 0);
+    const cfgPeng = pdfCfgTabel(
+      ['Tanggal', 'Kategori', 'Keterangan', 'Nominal'],
+      L.pengeluaran.length
+        ? L.pengeluaran.map(p => [tglIndo(p.Tanggal), p.Kategori_Pengeluaran, p.Keterangan || '—', rp(p.Nominal)])
+        : pdfBarisKosong('Tidak ada pengeluaran pada periode ini.', 4),
+      {
+        columnStyles: {
+          0: { cellWidth: 24, fontSize: 7.5 },
+          1: { cellWidth: 32 },
+          2: { cellWidth: 'auto', fontSize: 7.5, textColor: PDF_WARNA.abu },
+          3: { cellWidth: 30, halign: 'right', textColor: PDF_WARNA.rose, fontStyle: 'bold' }
+        },
+        foot: L.pengeluaran.length
+          ? [[{ content: 'Total pengeluaran', colSpan: 3, styles: { halign: 'right' } }, rp(totalPeng)]]
+          : undefined
+      });
+    y = pdfTabel(doc, y, 'Pengeluaran Operasional', cfgPeng);
+
+    // --- Transaksi Terakhir ---
+    const totalTrx = L.transaksi.reduce((s, t) => s + (Number(t.total) || 0), 0);
+    const cfgTrx = pdfCfgTabel(
+      ['No. Faktur', 'Waktu', 'Metode', 'Total'],
+      L.transaksi.length
+        ? L.transaksi.map(t => [t.no, String(t.tanggal || ''), t.metode, rp(t.total)])
+        : pdfBarisKosong('Belum ada transaksi.', 4),
+      {
+        columnStyles: {
+          0: { cellWidth: 46, fontSize: 7.5 },
+          1: { cellWidth: 38, fontSize: 7.5, textColor: PDF_WARNA.abu },
+          2: { cellWidth: 'auto' },
+          3: { cellWidth: 32, halign: 'right', fontStyle: 'bold' }
+        },
+        foot: L.transaksi.length
+          ? [[{ content: 'Total ' + L.transaksi.length + ' transaksi', colSpan: 3, styles: { halign: 'right' } }, rp(totalTrx)]]
+          : undefined
+      });
+    y = pdfTabel(doc, y, 'Transaksi Terakhir', cfgTrx);
+
+    // --- Stok & Nilai Aset ---
+    const menipis = L.stok.menipis || [];
+    const cfgStok = pdfCfgTabel(
+      ['Produk', 'Stok', 'HPP', 'Nilai'],
+      L.stok.produk.length
+        ? L.stok.produk.map(p => [p.nama + (p.status === 'Nonaktif' ? ' (nonaktif)' : ''),
+            p.stok + ' ' + (p.satuan || ''), rp(p.hpp), rp(p.nilai)])
+        : pdfBarisKosong('Belum ada produk.', 4),
+      {
+        columnStyles: {
+          0: { cellWidth: 'auto' },
+          1: { cellWidth: 30, halign: 'right' },
+          2: { cellWidth: 32, halign: 'right' },
+          3: { cellWidth: 32, halign: 'right', fontStyle: 'bold' }
+        },
+        foot: L.stok.produk.length
+          ? [[{ content: 'Total nilai aset', colSpan: 3, styles: { halign: 'right' } }, rp(L.stok.nilaiAset)]]
+          : undefined
+      });
+    y = pdfTabel(doc, y, 'Stok & Nilai Aset', cfgStok,
+      'Nilai aset inventaris: ' + rp(L.stok.nilaiAset) +
+      (menipis.length ? '  •  ' + menipis.length + ' produk stok menipis' : '  •  semua stok aman'));
+
+    pdfKaki(doc, L);
+    doc.save('Laporan_Kasir_' + L.mulai + '_' + L.akhir + '.pdf');
+    toast('PDF laporan diunduh ✓', 'ok');
+  } catch (e) {
+    toast('Gagal membuat PDF: ' + e.message, 'err');
+  } finally {
+    btn.disabled = false; btn.textContent = teksAwal;
+  }
+}
+$('#btnExportPdf').addEventListener('click', unduhLaporanPdf);
 
 /* ================================================================
  * 12. PENGATURAN LOKAL
